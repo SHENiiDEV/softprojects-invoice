@@ -149,7 +149,7 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 					<div class="font-extrabold text-lg tracking-tight text-white flex items-center gap-2">
 						SoftProjects <span class="text-xs uppercase px-2 py-0.5 rounded font-bold bg-brand-neon/10 text-brand-neon border border-brand-neon/30">Invoice Helper</span>
 					</div>
-					<div class="text-[11px] text-brand-textMuted tracking-wide">Универсальный бот подбора товаров и генерации инвойсов</div>
+					<div class="text-[11px] text-brand-textMuted tracking-wide">Универсальный бот подбора товаров, копирования и генерации инвойсов</div>
 				</div>
 			</div>
 
@@ -181,10 +181,15 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 			<div class="bg-brand-card border border-brand-cardBorder rounded-2xl p-6 shadow-xl relative overflow-hidden">
 				<div class="absolute -top-12 -right-12 w-32 h-32 bg-brand-neon/5 rounded-full blur-2xl pointer-events-none"></div>
 
-				<h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-					<svg class="w-5 h-5 text-brand-neon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-					Параметры подбора
-				</h2>
+				<div class="flex items-center justify-between mb-4">
+					<h2 class="text-lg font-bold text-white flex items-center gap-2">
+						<svg class="w-5 h-5 text-brand-neon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+						Параметры подбора
+					</h2>
+					<button type="button" onclick="randomizeOrderId()" title="Сгенерировать случайный Order ID" class="text-xs text-brand-neon hover:underline flex items-center gap-1">
+						<span>🎲 Новый #ID</span>
+					</button>
+				</div>
 
 				<form id="matchForm" onsubmit="handleMatchSubmit(event)" class="space-y-4">
 					
@@ -284,7 +289,7 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 							</div>
 							<div>
 								<label class="block text-[11px] text-gray-400 mb-1">Номер заказа</label>
-								<input type="text" id="orderId" placeholder="DRZ-37708" value="#DRZ-37708"
+								<input type="text" id="orderId" placeholder="#DRZ-37708" value="#DRZ-37708"
 									class="w-full bg-[#14171f] border border-brand-cardBorder rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-brand-neon">
 							</div>
 						</div>
@@ -323,19 +328,21 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 						</label>
 					</div>
 
-					<!-- Submit Button -->
-					<button type="submit" id="btnSubmit" 
-						class="w-full mt-2 py-3 px-4 bg-brand-neon hover:bg-brand-neonHover text-black font-extrabold rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-lg shadow-brand-neon/20 active:scale-[0.99]">
-						<span id="btnText">⚡ Собрать товары под сумму</span>
-						<div id="btnSpinner" class="hidden w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-					</button>
+					<!-- Submit Buttons -->
+					<div class="flex gap-2">
+						<button type="submit" id="btnSubmit" 
+							class="flex-1 py-3 px-4 bg-brand-neon hover:bg-brand-neonHover text-black font-extrabold rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-lg shadow-brand-neon/20 active:scale-[0.99]">
+							<span id="btnText">⚡ Собрать товары под сумму</span>
+							<div id="btnSpinner" class="hidden w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+						</button>
+					</div>
 
 				</form>
 			</div>
 
 			<!-- Quick Presets -->
 			<div class="bg-brand-card/60 border border-brand-cardBorder/70 rounded-xl p-4">
-				<div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Быстрый пример сумм</div>
+				<div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Быстрый выбор сумм</div>
 				<div class="flex flex-wrap gap-2">
 					<button onclick="setAmount(20.00)" class="px-2.5 py-1 rounded bg-brand-card border border-brand-cardBorder text-xs text-gray-300 hover:border-brand-neon hover:text-brand-neon">20.00 €</button>
 					<button onclick="setAmount(45.00)" class="px-2.5 py-1 rounded bg-brand-card border border-brand-cardBorder text-xs text-gray-300 hover:border-brand-neon hover:text-brand-neon">45.00 €</button>
@@ -369,23 +376,32 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 					<div class="flex flex-wrap items-center justify-between gap-4 border-b border-brand-cardBorder pb-4 mb-5">
 						<div>
 							<div class="text-xs uppercase tracking-wider text-brand-textMuted font-semibold">Магазин</div>
-							<div id="resStoreName" class="text-xl font-black text-white tracking-tight">DREZZA</div>
+							<div class="flex items-center gap-2">
+								<input type="text" id="editStoreName" value="DREZZA" oninput="syncStoreNameChange()"
+									class="text-xl font-black text-white tracking-tight bg-transparent border-b border-dashed border-gray-600 focus:border-brand-neon focus:outline-none">
+							</div>
 							<div id="resStoreMeta" class="text-xs text-brand-neon flex items-center gap-1.5 mt-0.5">
 								<span>WooCommerce Store API</span> • <span id="resCatalogCount">12 товаров в каталоге</span>
 							</div>
 						</div>
 
-						<div class="flex items-center gap-2">
-							<button onclick="copyTextReceipt()" id="btnCopyText" 
-								class="px-4 py-2 bg-[#0c0e12] border border-brand-cardBorder hover:border-brand-neon text-white font-semibold text-xs rounded-xl transition flex items-center gap-1.5 shadow-sm">
-								<svg class="w-4 h-4 text-brand-neon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
-								<span id="copyBtnLabel">Скопировать чек</span>
+						<!-- Action Buttons -->
+						<div class="flex flex-wrap items-center gap-2">
+							<button onclick="handleMatchSubmit(event)" title="Сгенерировать другой вариант товаров"
+								class="px-3 py-2 bg-[#0c0e12] border border-brand-cardBorder hover:border-brand-neon text-gray-200 font-semibold text-xs rounded-xl transition flex items-center gap-1.5 shadow-sm">
+								<span>🎲 Пересобрать</span>
+							</button>
+
+							<button onclick="openPdfPreviewModal()" 
+								class="px-3 py-2 bg-[#0c0e12] border border-brand-cardBorder hover:border-brand-neon text-brand-neon font-semibold text-xs rounded-xl transition flex items-center gap-1.5 shadow-sm">
+								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+								<span>👁️ Предпросмотр</span>
 							</button>
 
 							<button onclick="downloadPdfInvoice()" 
 								class="px-4 py-2 bg-brand-neon hover:bg-brand-neonHover text-black font-extrabold text-xs rounded-xl transition flex items-center gap-1.5 shadow-md shadow-brand-neon/20">
 								<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-								Скачать PDF Инвойс
+								<span>Скачать PDF</span>
 							</button>
 						</div>
 					</div>
@@ -407,23 +423,30 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 					</div>
 				</div>
 
-				<!-- Products Table Breakdown -->
+				<!-- Products Table Breakdown (Interactive & Editable) -->
 				<div class="bg-brand-card border border-brand-cardBorder rounded-2xl overflow-hidden shadow-xl">
-					<div class="p-5 border-b border-brand-cardBorder flex items-center justify-between">
+					<div class="p-5 border-b border-brand-cardBorder flex flex-wrap items-center justify-between gap-3">
 						<h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
 							<span>Товары в корзине</span>
 							<span id="resItemsBadge" class="text-[11px] px-2 py-0.5 rounded-full bg-brand-neon/10 text-brand-neon border border-brand-neon/20 font-mono">0 позиций</span>
 						</h3>
+
+						<div class="flex items-center gap-2">
+							<button onclick="addNewCustomRow()" class="px-2.5 py-1 rounded-lg bg-[#0c0e12] border border-brand-cardBorder hover:border-brand-neon text-xs text-gray-300 flex items-center gap-1">
+								<span>➕ Добавить товар</span>
+							</button>
+						</div>
 					</div>
 
 					<div class="overflow-x-auto">
 						<table class="w-full text-left text-xs">
 							<thead class="bg-[#0c0e12] text-gray-400 font-semibold border-b border-brand-cardBorder uppercase tracking-wider text-[10px]">
 								<tr>
-									<th class="px-6 py-3">Товар</th>
-									<th class="px-4 py-3 text-center">Кол-во</th>
-									<th class="px-4 py-3 text-right">Цена за шт.</th>
-									<th class="px-6 py-3 text-right">Сумма</th>
+									<th class="px-4 py-3">Товар</th>
+									<th class="px-3 py-3 text-center w-28">Кол-во</th>
+									<th class="px-4 py-3 text-right w-28">Цена за шт.</th>
+									<th class="px-4 py-3 text-right w-28">Сумма</th>
+									<th class="px-3 py-3 text-center w-20">Действия</th>
 								</tr>
 							</thead>
 							<tbody id="resTableBody" class="divide-y divide-brand-cardBorder/60 text-gray-200">
@@ -433,23 +456,118 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 					</div>
 				</div>
 
-				<!-- Text Breakdown View -->
+				<!-- Multi-Format Copy Hub -->
 				<div class="bg-brand-card border border-brand-cardBorder rounded-2xl p-6 shadow-xl">
-					<div class="flex items-center justify-between mb-3">
+					<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
 						<div class="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
-							<svg class="w-4 h-4 text-brand-neon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-							Текстовый чек для копирования
+							<svg class="w-4 h-4 text-brand-neon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+							Форматы копирования данных
 						</div>
-						<span class="text-[11px] text-brand-textMuted font-mono">UTF-8 Plaintext</span>
+
+						<!-- Copy Tab Switches -->
+						<div class="flex flex-wrap gap-1.5 bg-[#0c0e12] p-1 rounded-xl border border-brand-cardBorder text-xs">
+							<button onclick="switchCopyTab('receipt')" id="tabBtn-receipt" class="px-2.5 py-1 rounded-lg font-semibold bg-brand-cardBorder text-brand-neon transition">
+								📋 Чек
+							</button>
+							<button onclick="switchCopyTab('compact')" id="tabBtn-compact" class="px-2.5 py-1 rounded-lg font-semibold text-gray-400 hover:text-white transition">
+								📝 Список
+							</button>
+							<button onclick="switchCopyTab('tsv')" id="tabBtn-tsv" class="px-2.5 py-1 rounded-lg font-semibold text-gray-400 hover:text-white transition">
+								📊 Excel / Sheets
+							</button>
+							<button onclick="switchCopyTab('titles')" id="tabBtn-titles" class="px-2.5 py-1 rounded-lg font-semibold text-gray-400 hover:text-white transition">
+								🏷️ Названия
+							</button>
+							<button onclick="switchCopyTab('links')" id="tabBtn-links" class="px-2.5 py-1 rounded-lg font-semibold text-gray-400 hover:text-white transition">
+								🔗 Ссылки
+							</button>
+						</div>
 					</div>
 
-					<pre id="resTextReceipt" class="bg-[#0c0e12] border border-brand-cardBorder rounded-xl p-4 font-mono text-xs text-emerald-400/90 overflow-x-auto custom-scroll leading-relaxed whitespace-pre select-all"></pre>
+					<div class="relative">
+						<textarea id="resCopyTextarea" rows="8" readonly
+							class="w-full bg-[#0c0e12] border border-brand-cardBorder rounded-xl p-4 font-mono text-xs text-emerald-400/90 overflow-x-auto custom-scroll leading-relaxed focus:outline-none focus:border-brand-neon select-all"></textarea>
+						
+						<button onclick="copyCurrentTabContent()" id="btnCopyMain"
+							class="absolute top-3 right-3 px-3.5 py-1.5 bg-brand-neon hover:bg-brand-neonHover text-black font-extrabold text-xs rounded-lg transition flex items-center gap-1.5 shadow-lg shadow-brand-neon/20">
+							<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+							<span id="btnCopyMainLabel">Скопировать</span>
+						</button>
+					</div>
 				</div>
 
 			</div>
 		</section>
 
 	</main>
+
+	<!-- ========================================== -->
+	<!-- 👁️ LIVE PDF PREVIEW & CUSTOMIZER MODAL -->
+	<!-- ========================================== -->
+	<div id="pdfModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+		<div class="bg-[#14171f] border border-brand-cardBorder rounded-2xl max-w-5xl w-full h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+			
+			<!-- Modal Header & Controls -->
+			<div class="p-4 border-b border-brand-cardBorder flex flex-wrap items-center justify-between gap-4 bg-[#0c0e12]">
+				<div class="flex items-center gap-3">
+					<div class="w-8 h-8 rounded-lg bg-brand-neon/10 border border-brand-neon/30 flex items-center justify-center text-brand-neon font-black text-sm">
+						PDF
+					</div>
+					<div>
+						<h3 class="text-sm font-bold text-white">Предпросмотр и настройка A4 Инвойса</h3>
+						<div class="text-[11px] text-gray-400">Настройте оформление и распечатайте или скачайте готовый PDF</div>
+					</div>
+				</div>
+
+				<!-- Styling Options Bar -->
+				<div class="flex flex-wrap items-center gap-3">
+					<!-- Brand Color Picker -->
+					<div class="flex items-center gap-1.5 bg-[#14171f] px-2.5 py-1.5 rounded-xl border border-brand-cardBorder text-xs">
+						<span class="text-gray-400 text-[11px]">Цвет шапки:</span>
+						<button onclick="setBrandColor('#00f09a')" title="Emerald Neon" class="w-5 h-5 rounded-full bg-[#00f09a] border border-white/20 hover:scale-110 transition"></button>
+						<button onclick="setBrandColor('#4f46e5')" title="Indigo" class="w-5 h-5 rounded-full bg-[#4f46e5] border border-white/20 hover:scale-110 transition"></button>
+						<button onclick="setBrandColor('#e11d48')" title="Crimson" class="w-5 h-5 rounded-full bg-[#e11d48] border border-white/20 hover:scale-110 transition"></button>
+						<button onclick="setBrandColor('#eab308')" title="Gold" class="w-5 h-5 rounded-full bg-[#eab308] border border-white/20 hover:scale-110 transition"></button>
+						<button onclick="setBrandColor('#0284c7')" title="Sky Blue" class="w-5 h-5 rounded-full bg-[#0284c7] border border-white/20 hover:scale-110 transition"></button>
+						<button onclick="setBrandColor('#181a1e')" title="Dark Minimal" class="w-5 h-5 rounded-full bg-[#181a1e] border border-white/40 hover:scale-110 transition"></button>
+						<input type="color" id="customColorPicker" value="#00f09a" onchange="setBrandColor(this.value)" class="w-5 h-5 rounded cursor-pointer bg-transparent border-0">
+					</div>
+
+					<!-- Payment Note -->
+					<div class="flex items-center gap-1.5 bg-[#14171f] px-2.5 py-1.5 rounded-xl border border-brand-cardBorder text-xs">
+						<span class="text-gray-400 text-[11px]">Оплата:</span>
+						<input type="text" id="editPaymentMethod" value="Direct bank transfer / Online" onchange="refreshPdfPreviewFrame()"
+							class="bg-[#0c0e12] border border-brand-cardBorder rounded px-2 py-0.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-neon w-44 truncate">
+					</div>
+
+					<!-- Print Button -->
+					<button onclick="printPdfFromIframe()" title="Распечатать или сохранить через браузер"
+						class="px-3.5 py-1.5 bg-[#14171f] hover:bg-gray-800 border border-brand-cardBorder text-gray-200 font-bold text-xs rounded-xl transition flex items-center gap-1.5">
+						<svg class="w-4 h-4 text-brand-neon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+						<span>Печать</span>
+					</button>
+
+					<!-- Download PDF Button -->
+					<button onclick="downloadPdfInvoice()" 
+						class="px-3.5 py-1.5 bg-brand-neon hover:bg-brand-neonHover text-black font-extrabold text-xs rounded-xl transition flex items-center gap-1.5 shadow-md shadow-brand-neon/20">
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+						<span>Скачать PDF</span>
+					</button>
+
+					<!-- Close Button -->
+					<button onclick="closePdfModal()" class="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white transition">
+						✕
+					</button>
+				</div>
+			</div>
+
+			<!-- Modal Body (Iframe) -->
+			<div class="flex-1 bg-gray-900 relative">
+				<iframe id="pdfPreviewIframe" class="w-full h-full border-0 bg-white"></iframe>
+			</div>
+
+		</div>
+	</div>
 
 	<!-- Toast Alert -->
 	<div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition duration-300 pointer-events-none bg-brand-neon text-black font-bold px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-sm">
@@ -460,6 +578,8 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 	<!-- JavaScript Client Logic -->
 	<script>
 		let currentMatchData = null;
+		let currentCopyTab = 'receipt';
+		let activeBrandColor = '#00f09a';
 
 		document.addEventListener('DOMContentLoaded', () => {
 			loadSavedShops();
@@ -496,6 +616,31 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 				}
 			});
 		});
+
+		function randomizeOrderId() {
+			const val = document.getElementById('storeUrl').value.trim();
+			let prefix = 'DRZ';
+			try {
+				const host = val.replace(/^https?:\/\//i, '').split('/')[0].replace(/^www\./i, '');
+				const pr = host.split('.')[0].substring(0, 3).toUpperCase();
+				if (pr && pr.length >= 2) prefix = pr;
+			} catch (e) {}
+			const randNum = Math.floor(10000 + Math.random() * 90000);
+			document.getElementById('orderId').value = `#${prefix}-${randNum}`;
+			showToast(`Сгенерирован новый номер заказа: #${prefix}-${randNum}`);
+			if (currentMatchData) {
+				currentMatchData.customer.order_id = `#${prefix}-${randNum}`;
+				triggerRecalculate();
+			}
+		}
+
+		function syncStoreNameChange() {
+			const name = document.getElementById('editStoreName').value.trim();
+			if (currentMatchData) {
+				currentMatchData.store_name = name || 'STORE';
+				triggerRecalculate();
+			}
+		}
 
 		function updateShippingModeUI() {
 			const mode = document.querySelector('input[name="shippingMode"]:checked').value;
@@ -545,7 +690,7 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 		}
 
 		async function handleMatchSubmit(e) {
-			e.preventDefault();
+			if (e && e.preventDefault) e.preventDefault();
 
 			let url = cleanUrl(document.getElementById('storeUrl').value);
 			document.getElementById('storeUrl').value = url;
@@ -564,6 +709,8 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 				email: document.getElementById('custEmail').value.trim(),
 				phone: document.getElementById('custPhone').value.trim(),
 				address: document.getElementById('custAddress').value.trim(),
+				brand_color: activeBrandColor,
+				payment_method: document.getElementById('editPaymentMethod').value.trim(),
 				date: new Date().toLocaleDateString('ru-RU')
 			};
 
@@ -606,6 +753,7 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 				}
 
 				currentMatchData = data;
+				document.getElementById('editStoreName').value = data.store_name;
 				renderResults(data);
 				loadSavedShops(); // Update shops count
 				showToast('Товары успешно подобраны под сумму!');
@@ -621,53 +769,265 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 			document.getElementById('emptyState').classList.add('hidden');
 			document.getElementById('resultsContainer').classList.remove('hidden');
 
-			document.getElementById('resStoreName').textContent = data.store_name;
-			document.getElementById('resStoreMeta').innerHTML = `<span>${data.catalog_source}</span> • <span>${data.catalog_count} товаров в базе</span>` + (data.is_cached ? ' • <span class="text-gray-400">из кэша</span>' : '');
+			document.getElementById('editStoreName').value = data.store_name;
+			document.getElementById('resStoreMeta').innerHTML = `<span>${data.catalog_source || 'Каталог'}</span> • <span>${data.catalog_count || data.match.items.length} товаров в базе</span>` + (data.is_cached ? ' • <span class="text-gray-400">из кэша</span>' : '');
 
 			const m = data.match;
-			document.getElementById('resSubtotal').textContent = `${m.subtotal.toFixed(2)} ${m.currency}`;
+			document.getElementById('resSubtotal').textContent = `${Number(m.subtotal).toFixed(2)} ${m.currency}`;
 			
-			const shipCost = m.shipping.cost > 0 ? `${m.shipping.method_title}: ${m.shipping.cost.toFixed(2)} ${m.currency}` : 'Free shipping (0.00 ' + m.currency + ')';
+			const shipCost = m.shipping.cost > 0 ? `${m.shipping.method_title}: ${Number(m.shipping.cost).toFixed(2)} ${m.currency}` : 'Free shipping (0.00 ' + m.currency + ')';
 			document.getElementById('resShipping').textContent = shipCost;
-			document.getElementById('resTotal').textContent = `${m.total.toFixed(2)} ${m.currency}`;
+			document.getElementById('resTotal').textContent = `${Number(m.total).toFixed(2)} ${m.currency}`;
 
-			document.getElementById('resItemsBadge').textContent = `${m.items.length} позиций (${m.items.reduce((s, i) => s + i.qty, 0)} шт.)`;
+			document.getElementById('resItemsBadge').textContent = `${m.items.length} позиций (${m.items.reduce((s, i) => s + Number(i.qty), 0)} шт.)`;
 
-			// Render Table Body
+			renderTableRows(m.items, m.currency);
+			updateCopyHub(data);
+		}
+
+		function renderTableRows(items, currency) {
 			const tbody = document.getElementById('resTableBody');
 			tbody.innerHTML = '';
-			m.items.forEach((item) => {
+
+			items.forEach((item, index) => {
 				const tr = document.createElement('tr');
-				tr.className = 'hover:bg-[#181c26] transition';
+				tr.className = 'hover:bg-[#181c26] transition group';
 				tr.innerHTML = `
-					<td class="px-6 py-3.5">
-						<div class="font-semibold text-white">${escapeHtml(item.name)}</div>
-						${item.link ? `<a href="${escapeHtml(item.link)}" target="_blank" class="text-[10px] text-brand-neon hover:underline truncate max-w-xs block">Перейти к товару ↗</a>` : ''}
+					<td class="px-4 py-3">
+						<div class="flex items-center gap-2">
+							<input type="text" value="${escapeHtml(item.name)}" onchange="updateItemName(${index}, this.value)"
+								class="bg-transparent text-white font-medium text-xs w-full focus:bg-[#0c0e12] focus:ring-1 focus:ring-brand-neon rounded px-1.5 py-0.5 border border-transparent hover:border-gray-700">
+							<button onclick="copySingleItemName(${index})" title="Скопировать только название" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-brand-neon p-1 transition">
+								📋
+							</button>
+						</div>
+						${item.link ? `<a href="${escapeHtml(item.link)}" target="_blank" class="text-[10px] text-brand-neon hover:underline truncate max-w-xs block mt-0.5">Перейти к товару ↗</a>` : ''}
 					</td>
-					<td class="px-4 py-3.5 text-center font-mono">
-						<span class="px-2 py-0.5 rounded bg-[#0c0e12] border border-brand-cardBorder text-gray-200 font-bold">${item.qty}</span>
+					<td class="px-3 py-3 text-center">
+						<div class="inline-flex items-center border border-brand-cardBorder rounded-lg overflow-hidden bg-[#0c0e12]">
+							<button onclick="changeItemQty(${index}, -1)" class="px-2 py-0.5 text-gray-400 hover:text-white hover:bg-gray-800 transition">-</button>
+							<input type="number" min="1" value="${item.qty}" onchange="setItemQty(${index}, this.value)"
+								class="w-10 text-center bg-transparent text-white font-bold text-xs py-0.5 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+							<button onclick="changeItemQty(${index}, 1)" class="px-2 py-0.5 text-gray-400 hover:text-white hover:bg-gray-800 transition">+</button>
+						</div>
 					</td>
-					<td class="px-4 py-3.5 text-right font-mono text-gray-300">${item.unit_price.toFixed(2)} ${m.currency}</td>
-					<td class="px-6 py-3.5 text-right font-mono font-bold text-white">${item.total.toFixed(2)} ${m.currency}</td>
+					<td class="px-4 py-3 text-right font-mono text-gray-300">
+						<input type="number" step="0.01" value="${Number(item.unit_price).toFixed(2)}" onchange="updateItemPrice(${index}, this.value)"
+							class="w-20 text-right bg-transparent text-gray-300 font-mono text-xs focus:bg-[#0c0e12] focus:ring-1 focus:ring-brand-neon rounded px-1 py-0.5 border border-transparent hover:border-gray-700">
+						${currency}
+					</td>
+					<td class="px-4 py-3 text-right font-mono font-bold text-white">
+						${Number(item.total).toFixed(2)} ${currency}
+					</td>
+					<td class="px-3 py-3 text-center">
+						<button onclick="deleteItemRow(${index})" title="Удалить товар из корзины" 
+							class="text-gray-500 hover:text-rose-400 p-1 rounded hover:bg-rose-950/40 transition">
+							🗑️
+						</button>
+					</td>
 				`;
 				tbody.appendChild(tr);
 			});
-
-			document.getElementById('resTextReceipt').textContent = data.text_receipt;
 		}
 
-		function copyTextReceipt() {
-			if (!currentMatchData || !currentMatchData.text_receipt) return;
-			navigator.clipboard.writeText(currentMatchData.text_receipt).then(() => {
-				const label = document.getElementById('copyBtnLabel');
-				label.textContent = 'Скопировано!';
-				setTimeout(() => label.textContent = 'Скопировать чек', 2000);
-				showToast('Текстовый чек скопирован в буфер!');
+		function changeItemQty(index, delta) {
+			if (!currentMatchData || !currentMatchData.match.items[index]) return;
+			const newQty = Number(currentMatchData.match.items[index].qty) + delta;
+			if (newQty < 1) return;
+			currentMatchData.match.items[index].qty = newQty;
+			triggerRecalculate();
+		}
+
+		function setItemQty(index, val) {
+			if (!currentMatchData || !currentMatchData.match.items[index]) return;
+			const qty = Math.max(1, parseInt(val) || 1);
+			currentMatchData.match.items[index].qty = qty;
+			triggerRecalculate();
+		}
+
+		function updateItemName(index, val) {
+			if (!currentMatchData || !currentMatchData.match.items[index]) return;
+			currentMatchData.match.items[index].name = val.trim();
+			triggerRecalculate();
+		}
+
+		function updateItemPrice(index, val) {
+			if (!currentMatchData || !currentMatchData.match.items[index]) return;
+			const price = Math.max(0.01, parseFloat(val) || 0.01);
+			currentMatchData.match.items[index].unit_price = price;
+			triggerRecalculate();
+		}
+
+		function deleteItemRow(index) {
+			if (!currentMatchData) return;
+			if (currentMatchData.match.items.length <= 1) {
+				showToast('В корзине должен оставаться хотя бы 1 товар.', true);
+				return;
+			}
+			currentMatchData.match.items.splice(index, 1);
+			triggerRecalculate();
+			showToast('Товар удален из корзины.');
+		}
+
+		function addNewCustomRow() {
+			if (!currentMatchData) return;
+			const curr = currentMatchData.match.currency || 'EUR';
+			currentMatchData.match.items.push({
+				name: 'Custom Product Item',
+				sku: '',
+				qty: 1,
+				unit_price: 25.00,
+				total: 25.00,
+				total_cents: 2500,
+				link: ''
 			});
+			triggerRecalculate();
+			showToast('Добавлен новый товар. Отредактируйте название и цену.');
+		}
+
+		async function triggerRecalculate() {
+			if (!currentMatchData) return;
+
+			try {
+				const res = await fetch('api.php?action=recalculate', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						items: currentMatchData.match.items,
+						currency: currentMatchData.match.currency,
+						customer: currentMatchData.customer,
+						store_name: currentMatchData.store_name,
+						shipping: currentMatchData.match.shipping
+					})
+				});
+
+				const data = await res.json();
+				if (data.success) {
+					currentMatchData.match = data.match;
+					currentMatchData.text_receipt = data.text_receipt;
+					currentMatchData.compact_list = data.compact_list;
+					currentMatchData.tsv_data = data.tsv_data;
+					renderResults(currentMatchData);
+				}
+			} catch (e) {}
+		}
+
+		function copySingleItemName(index) {
+			if (!currentMatchData || !currentMatchData.match.items[index]) return;
+			const name = currentMatchData.match.items[index].name;
+			navigator.clipboard.writeText(name).then(() => {
+				showToast(`Название скопировано: "${name}"`);
+			});
+		}
+
+		function updateCopyHub(data) {
+			const textarea = document.getElementById('resCopyTextarea');
+			if (currentCopyTab === 'receipt') {
+				textarea.value = data.text_receipt || '';
+			} else if (currentCopyTab === 'compact') {
+				textarea.value = data.compact_list || generateCompactList(data.match);
+			} else if (currentCopyTab === 'tsv') {
+				textarea.value = data.tsv_data || generateTsvData(data.match);
+			} else if (currentCopyTab === 'titles') {
+				textarea.value = data.match.items.map(i => i.name).join('\n');
+			} else if (currentCopyTab === 'links') {
+				textarea.value = data.match.items.map(i => i.link || i.name).join('\n');
+			}
+		}
+
+		function switchCopyTab(tabName) {
+			currentCopyTab = tabName;
+			['receipt', 'compact', 'tsv', 'titles', 'links'].forEach(t => {
+				const btn = document.getElementById(`tabBtn-${t}`);
+				if (t === tabName) {
+					btn.className = 'px-2.5 py-1 rounded-lg font-semibold bg-brand-cardBorder text-brand-neon transition';
+				} else {
+					btn.className = 'px-2.5 py-1 rounded-lg font-semibold text-gray-400 hover:text-white transition';
+				}
+			});
+
+			if (currentMatchData) {
+				updateCopyHub(currentMatchData);
+			}
+		}
+
+		function copyCurrentTabContent() {
+			const textarea = document.getElementById('resCopyTextarea');
+			if (!textarea.value) return;
+			navigator.clipboard.writeText(textarea.value).then(() => {
+				const label = document.getElementById('btnCopyMainLabel');
+				label.textContent = 'Скопировано!';
+				setTimeout(() => label.textContent = 'Скопировать', 2000);
+				showToast('Данные скопированы в буфер обмена!');
+			});
+		}
+
+		function generateCompactList(match) {
+			return match.items.map((i, idx) => `${idx + 1}. ${i.name} [x${i.qty} @ ${Number(i.unit_price).toFixed(2)} ${match.currency}] = ${Number(i.total).toFixed(2)} ${match.currency}`).join('\n');
+		}
+
+		function generateTsvData(match) {
+			const header = "Product Name\tQuantity\tUnit Price\tTotal\tCurrency\tLink";
+			const rows = match.items.map(i => `${i.name}\t${i.qty}\t${Number(i.unit_price).toFixed(2)}\t${Number(i.total).toFixed(2)}\t${match.currency}\t${i.link || ''}`);
+			return [header, ...rows].join('\n');
+		}
+
+		// ==========================================
+		// 👁️ PDF PREVIEW MODAL & ACTIONS
+		// ==========================================
+		function openPdfPreviewModal() {
+			if (!currentMatchData) return;
+			document.getElementById('pdfModal').classList.remove('hidden');
+			refreshPdfPreviewFrame();
+		}
+
+		function closePdfModal() {
+			document.getElementById('pdfModal').classList.add('hidden');
+		}
+
+		function setBrandColor(colorHex) {
+			activeBrandColor = colorHex;
+			document.getElementById('customColorPicker').value = colorHex;
+			if (currentMatchData) {
+				currentMatchData.customer.brand_color = colorHex;
+			}
+			refreshPdfPreviewFrame();
+		}
+
+		function refreshPdfPreviewFrame() {
+			if (!currentMatchData) return;
+			
+			currentMatchData.customer.brand_color = activeBrandColor;
+			currentMatchData.customer.payment_method = document.getElementById('editPaymentMethod').value.trim();
+			currentMatchData.store_name = document.getElementById('editStoreName').value.trim() || 'STORE';
+
+			const iframe = document.getElementById('pdfPreviewIframe');
+			
+			fetch('api.php?action=preview_html', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+				body: 'payload=' + encodeURIComponent(JSON.stringify(currentMatchData))
+			})
+			.then(res => res.text())
+			.then(html => {
+				iframe.srcdoc = html;
+			});
+		}
+
+		function printPdfFromIframe() {
+			const iframe = document.getElementById('pdfPreviewIframe');
+			if (iframe && iframe.contentWindow) {
+				iframe.contentWindow.focus();
+				iframe.contentWindow.print();
+			}
 		}
 
 		function downloadPdfInvoice() {
 			if (!currentMatchData) return;
+
+			currentMatchData.customer.brand_color = activeBrandColor;
+			currentMatchData.customer.payment_method = document.getElementById('editPaymentMethod').value.trim();
+			currentMatchData.store_name = document.getElementById('editStoreName').value.trim() || 'STORE';
 
 			const form = document.createElement('form');
 			form.method = 'POST';

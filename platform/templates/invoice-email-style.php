@@ -31,6 +31,11 @@ $formatted_total    = number_format( (float) $record['amount'], 2, '.', ' ' );
 $formatted_subtotal = isset( $subtotal ) ? number_format( (float) $subtotal, 2, '.', ' ' ) : $formatted_total;
 $site_lang          = function_exists( 'get_bloginfo' ) ? get_bloginfo( 'language' ) : 'en-US';
 
+// Dynamic brand styling
+$brand_color    = ! empty( $customer_data['brand_color'] ) ? esc_attr( $customer_data['brand_color'] ) : ( ! empty( $brand_color ) ? esc_attr( $brand_color ) : '#00f09a' );
+$header_bg      = ! empty( $customer_data['header_bg'] ) ? esc_attr( $customer_data['header_bg'] ) : '#181a1e';
+$payment_method = ! empty( $customer_data['payment_method'] ) ? esc_html( $customer_data['payment_method'] ) : esc_html__( 'Direct bank transfer / Online', 'woocommerce' );
+
 // Format display order number (#DRZ-37708)
 $display_order_id = ( strpos( $invoice_number, '#' ) === 0 ) ? $invoice_number : '#' . $invoice_number;
 ?>
@@ -41,6 +46,10 @@ $display_order_id = ( strpos( $invoice_number, '#' ) === 0 ) ? $invoice_number :
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title><?php echo esc_html( sprintf( __( 'Invoice %s', 'woocommerce' ), $display_order_id ) ); ?></title>
 	<style>
+		:root {
+			--brand-color: <?php echo $brand_color; ?>;
+			--header-bg: <?php echo $header_bg; ?>;
+		}
 		@page {
 			size: A4 portrait;
 			margin: 8mm;
@@ -70,11 +79,11 @@ $display_order_id = ( strpos( $invoice_number, '#' ) === 0 ) ? $invoice_number :
 			overflow: hidden;
 		}
 		.invoice-header {
-			background-color: #181a1e;
+			background-color: var(--header-bg);
 			color: #ffffff;
 			padding: 32px 40px;
 			text-align: left;
-			border-bottom: 4px solid #00f09a;
+			border-bottom: 4px solid var(--brand-color);
 			position: relative;
 		}
 		.brand-badge {
@@ -83,7 +92,7 @@ $display_order_id = ( strpos( $invoice_number, '#' ) === 0 ) ? $invoice_number :
 			font-size: 11px;
 			font-weight: 800;
 			letter-spacing: 2px;
-			color: #00f09a;
+			color: var(--brand-color);
 			margin-bottom: 8px;
 		}
 		.invoice-header h1 {
@@ -102,7 +111,7 @@ $display_order_id = ( strpos( $invoice_number, '#' ) === 0 ) ? $invoice_number :
 			font-weight: 500;
 		}
 		.invoice-header .order-highlight {
-			color: #00f09a;
+			color: var(--brand-color);
 			font-weight: 700;
 		}
 		.invoice-body {
@@ -122,7 +131,7 @@ $display_order_id = ( strpos( $invoice_number, '#' ) === 0 ) ? $invoice_number :
 			font-size: 18px;
 			font-weight: 700;
 			margin: 0 0 20px 0;
-			border-bottom: 2px solid #00f09a;
+			border-bottom: 2px solid var(--brand-color);
 			padding-bottom: 8px;
 			display: flex;
 			justify-content: space-between;
@@ -336,7 +345,7 @@ $display_order_id = ( strpos( $invoice_number, '#' ) === 0 ) ? $invoice_number :
 				<?php endif; ?>
 				<tr>
 					<td class="label"><?php echo esc_html__( 'Payment method:', 'woocommerce' ); ?></td>
-					<td class="value"><?php echo esc_html__( 'Direct bank transfer / Online', 'woocommerce' ); ?></td>
+					<td class="value"><?php echo $payment_method; ?></td>
 				</tr>
 				<tr class="total-row">
 					<td class="label"><?php echo esc_html__( 'Total:', 'woocommerce' ); ?></td>

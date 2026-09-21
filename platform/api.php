@@ -142,8 +142,10 @@ if ( $action === 'match' ) {
 		send_json( $match_result, 400 );
 	}
 
-	// 3. Generate formatted text
+	// 3. Generate formatted outputs
 	$text_receipt = Universal_Catalog_Matcher::format_text_receipt( $match_result, $customer_data, $store_name );
+	$compact_list = Universal_Catalog_Matcher::format_compact_list( $match_result, $currency );
+	$tsv_data     = Universal_Catalog_Matcher::format_tsv( $match_result, $currency );
 
 	send_json( array(
 		'success'        => true,
@@ -154,8 +156,61 @@ if ( $action === 'match' ) {
 		'is_cached'      => ! empty( $catalog_result['cached'] ),
 		'match'          => $match_result,
 		'text_receipt'   => $text_receipt,
+		'compact_list'   => $compact_list,
+		'tsv_data'       => $tsv_data,
 		'customer'       => $customer_data,
 	) );
+}
+
+// 2.1 Action: Recalculate Modified Items & Formats
+if ( $action === 'recalculate' ) {
+	$input = json_decode( file_get_contents( 'php://input' ), true );
+	if ( empty( $input ) ) {
+		$input = $_POST;
+	}
+
+	$items         = isset( $input['items'] ) && is_array( $input['items'] ) ? $input['items'] : array();
+	$currency      = ! empty( $input['currency'] ) ? strtoupper( trim( $input['currency'] ) ) : 'EUR';
+	$customer_data = ! empty( $input['customer'] ) ? $input['customer'] : array();
+	$store_name    = ! empty( $input['store_name'] ) ? trim( $input['store_name'] ) : 'STORE';
+	$shipping_info = isset( $input['shipping'] ) ? $input['shipping'] : array();
+
+	$recalc_result = Universal_Catalog_Matcher::recalculate_from_items( $items, $currency, $shipping_info );
+	$text_receipt  = Universal_Catalog_Matcher::format_text_receipt( $recalc_result, $customer_data, $store_name );
+	$compact_list  = Universal_Catalog_Matcher::format_compact_list( $recalc_result, $currency );
+	$tsv_data      = Universal_Catalog_Matcher::format_tsv( $recalc_result, $currency );
+
+	send_json( array(
+		'success'      => true,
+		'store_name'   => $store_name,
+		'match'        => $recalc_result,
+		'text_receipt' => $text_receipt,
+		'compact_list' => $compact_list,
+		'tsv_data'     => $tsv_data,
+		'customer'     => $customer_data,
+	) );
+}
+
+// 2.2 Action: Preview HTML Invoice (for Live Preview modal and printing)
+if ( $action === 'preview_html' ) {
+	$payload_raw = isset( $_POST['payload'] ) ? $_POST['payload'] : ( isset( $_GET['payload'] ) ? $_GET['payload'] : '' );
+	if ( empty( $payload_raw ) ) {
+		die( 'Missing invoice payload.' );
+	}
+
+	$data = json_decode( $payload_raw, true );
+	if ( empty( $data ) || empty( $data['match'] ) ) {
+		die( 'Invalid payload.' );
+	}
+
+	$match_result  = $data['match'];
+	$customer_data = ! empty( $data['customer'] ) ? $data['customer'] : array();
+	$store_name    = ! empty( $data['store_name'] ) ? $data['store_name'] : 'DREZZA';
+
+	$html = Universal_PDF_Builder::render_html( $match_result, $customer_data, $store_name );
+	header( 'Content-Type: text/html; charset=utf-8' );
+	echo $html;
+	exit;
 }
 
 // 3. Action: Download PDF Invoice

@@ -376,4 +376,100 @@ class Universal_Catalog_Matcher {
 
 		return implode( "\n", $lines );
 	}
+
+	/**
+	 * Format items list as clean compact lines for quick copying.
+	 *
+	 * @param array $match_result
+	 * @param string $currency
+	 * @return string
+	 */
+	public static function format_compact_list( $match_result, $currency = 'EUR' ) {
+		$lines = array();
+		$idx = 1;
+		foreach ( $match_result['items'] as $item ) {
+			$item_total = number_format( (float) $item['total'], 2, '.', '' );
+			$item_unit  = number_format( (float) $item['unit_price'], 2, '.', '' );
+			$lines[] = sprintf( '%d. %s [x%d @ %s %s] = %s %s', $idx, $item['name'], $item['qty'], $item_unit, $currency, $item_total, $currency );
+			$idx++;
+		}
+		return implode( "\n", $lines );
+	}
+
+	/**
+	 * Format items as Tab-Separated Values (TSV) for direct paste into Excel / Google Sheets.
+	 *
+	 * @param array $match_result
+	 * @param string $currency
+	 * @return string
+	 */
+	public static function format_tsv( $match_result, $currency = 'EUR' ) {
+		$lines   = array();
+		$lines[] = "Product Name\tQuantity\tUnit Price\tTotal\tCurrency\tSKU\tLink";
+		foreach ( $match_result['items'] as $item ) {
+			$lines[] = sprintf(
+				"%s\t%d\t%.2f\t%.2f\t%s\t%s\t%s",
+				$item['name'],
+				$item['qty'],
+				$item['unit_price'],
+				$item['total'],
+				$currency,
+				! empty( $item['sku'] ) ? $item['sku'] : '',
+				! empty( $item['link'] ) ? $item['link'] : ''
+			);
+		}
+		return implode( "\n", $lines );
+	}
+
+	/**
+	 * Recalculate totals and items from modified basket items.
+	 *
+	 * @param array  $items
+	 * @param string $currency
+	 * @param array  $shipping_info
+	 * @return array
+	 */
+	public static function recalculate_from_items( $items, $currency = 'EUR', $shipping_info = array() ) {
+		$subtotal_cents = 0;
+		$clean_items    = array();
+
+		foreach ( $items as $item ) {
+			$qty        = max( 1, (int) $item['qty'] );
+			$unit_price = round( (float) $item['unit_price'], 2 );
+			$unit_cents = (int) round( $unit_price * 100 );
+			$line_cents = $unit_cents * $qty;
+			$subtotal_cents += $line_cents;
+
+			$clean_items[] = array(
+				'name'        => trim( (string) $item['name'] ),
+				'sku'         => ! empty( $item['sku'] ) ? trim( (string) $item['sku'] ) : '',
+				'qty'         => $qty,
+				'unit_price'  => $unit_price,
+				'total'       => round( $line_cents / 100, 2 ),
+				'total_cents' => $line_cents,
+				'link'        => ! empty( $item['link'] ) ? trim( (string) $item['link'] ) : '',
+			);
+		}
+
+		$subtotal = round( $subtotal_cents / 100, 2 );
+
+		if ( empty( $shipping_info ) ) {
+			$shipping_info = self::resolve_shipping( $subtotal, $currency );
+		}
+
+		$shipping_cost = round( (float) $shipping_info['cost'], 2 );
+		$total         = round( $subtotal + $shipping_cost, 2 );
+
+		return array(
+			'success'        => true,
+			'items'          => $clean_items,
+			'items_count'    => count( $clean_items ),
+			'subtotal'       => $subtotal,
+			'subtotal_cents' => $subtotal_cents,
+			'shipping'       => $shipping_info,
+			'total'          => $total,
+			'total_cents'    => (int) round( $total * 100 ),
+			'currency'       => $currency,
+		);
+	}
 }
