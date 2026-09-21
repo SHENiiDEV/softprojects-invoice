@@ -1,0 +1,17 @@
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs & temp
+*.log
+platform/storage/temp/*
+!platform/storage/temp/.gitkeep
+platform/storage/catalogs/*
+!platform/storage/catalogs/.gitkeep
+
+# Archives
+*.zip

@@ -1,0 +1,181 @@
+/**
+ * Styles for WooCommerce PDF Invoice Batch Generator Admin Page
+ */
+
+.wc-pibg-container {
+	margin-top: 20px;
+	max-width: 1200px;
+}
+
+.wc-pibg-card {
+	background: #fff;
+	border: 1px solid #ccd0d4;
+	box-shadow: 0 1px 1px rgba(0,0,0,.04);
+	padding: 24px;
+	border-radius: 4px;
+	margin-top: 15px;
+}
+
+/* Upload Screen */
+.wc-pibg-upload-box {
+	max-width: 700px;
+	margin: 0 auto;
+	text-align: center;
+	padding: 20px 0;
+}
+
+.wc-pibg-upload-header h2 {
+	font-size: 20px;
+	font-weight: 600;
+	margin-bottom: 8px;
+	color: #1d2327;
+}
+
+.wc-pibg-upload-header p.description {
+	font-size: 14px;
+	line-height: 1.5;
+	margin-bottom: 24px;
+}
+
+.wc-pibg-dropzone {
+	border: 2px dashed #96588a;
+	border-radius: 8px;
+	padding: 40px 20px;
+	background: #fbf9fb;
+	cursor: pointer;
+	position: relative;
+	transition: all 0.2s ease-in-out;
+}
+
+.wc-pibg-dropzone:hover,
+.wc-pibg-dropzone.dragover {
+	background: #f4ecf3;
+	border-color: #7f54b3;
+}
+
+.wc-pibg-dropzone .dashicons-upload {
+	font-size: 48px;
+	width: 48px;
+	height: 48px;
+	color: #96588a;
+	margin-bottom: 12px;
+}
+
+.wc-pibg-file-label {
+	display: block;
+	cursor: pointer;
+	font-size: 16px;
+	color: #2c3338;
+}
+
+.wc-pibg-file-label strong {
+	color: #96588a;
+	text-decoration: underline;
+}
+
+.wc-pibg-dropzone input[type="file"] {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	opacity: 0;
+	cursor: pointer;
+}
+
+.file-chosen-name {
+	margin-top: 12px;
+	font-weight: 600;
+	color: #2271b1;
+	font-size: 14px;
+}
+
+.wc-pibg-actions {
+	margin-top: 24px;
+}
+
+/* Preview Screen */
+.wc-pibg-preview-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	border-bottom: 1px solid #f0f0f1;
+	padding-bottom: 16px;
+	margin-bottom: 20px;
+}
+
+.wc-pibg-preview-header h2 {
+	margin: 0 0 6px 0;
+	font-size: 18px;
+}
+
+.amount-badge {
+	display: inline-block;
+	background: #f0f6e8;
+	color: #46b450;
+	font-weight: 700;
+	padding: 3px 8px;
+	border-radius: 4px;
+	border: 1px solid #cbe4b8;
+}
+
+.wc-pibg-table th {
+	font-weight: 600;
+}
+
+.wc-pibg-table td {
+	vertical-align: middle;
+}
+
+.wc-pibg-table .na {
+	color: #a7aaad;
+}
+
+/* Modal Spinner Overlay */
+.wc-pibg-modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0,0,0,0.55);
+	z-index: 999999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.wc-pibg-modal {
+	background: #fff;
+	padding: 30px 40px;
+	border-radius: 8px;
+	text-align: center;
+	box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+	max-width: 400px;
+}
+
+.wc-pibg-modal h3 {
+	margin: 16px 0 8px 0;
+	color: #1d2327;
+}
+
+.wc-pibg-modal p {
+	margin: 0;
+	color: #646970;
+	font-size: 13px;
+}
+
+.wc-pibg-spinner {
+	width: 40px;
+	height: 40px;
+	border: 4px solid #f3f3f3;
+	border-top: 4px solid #96588a;
+	border-radius: 50%;
+	animation: wc-pibg-spin 1s linear infinite;
+	margin: 0 auto;
+}
+
+@keyframes wc-pibg-spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}

@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  platform:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: darwin_catalog_platform
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./platform/storage:/var/www/html/platform/storage
+    environment:
+      - TZ=UTC
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api.php?action=list_shops"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
