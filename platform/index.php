@@ -423,16 +423,35 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 					</div>
 				</div>
 
-				<!-- Products Table Breakdown (Interactive & Editable) -->
+				<!-- Products Table Breakdown (Interactive, Click-to-Copy & Editable) -->
 				<div class="bg-brand-card border border-brand-cardBorder rounded-2xl overflow-hidden shadow-xl">
-					<div class="p-5 border-b border-brand-cardBorder flex flex-wrap items-center justify-between gap-3">
-						<h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-							<span>Товары в корзине</span>
-							<span id="resItemsBadge" class="text-[11px] px-2 py-0.5 rounded-full bg-brand-neon/10 text-brand-neon border border-brand-neon/20 font-mono">0 позиций</span>
-						</h3>
-
+					<div class="p-4 sm:p-5 border-b border-brand-cardBorder flex flex-wrap items-center justify-between gap-3">
 						<div class="flex items-center gap-2">
-							<button onclick="addNewCustomRow()" class="px-2.5 py-1 rounded-lg bg-[#0c0e12] border border-brand-cardBorder hover:border-brand-neon text-xs text-gray-300 flex items-center gap-1">
+							<h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+								<span>Товары в корзине</span>
+								<span id="resItemsBadge" class="text-[11px] px-2 py-0.5 rounded-full bg-brand-neon/10 text-brand-neon border border-brand-neon/20 font-mono">0 позиций</span>
+							</h3>
+						</div>
+
+						<!-- Quick Copy Bar for Table -->
+						<div class="flex flex-wrap items-center gap-1.5">
+							<button onclick="copyAllProductNames()" title="Скопировать все названия товаров построчно"
+								class="px-2.5 py-1 rounded-lg bg-[#0c0e12] border border-brand-cardBorder hover:border-brand-neon text-gray-300 hover:text-white text-xs flex items-center gap-1 transition">
+								<svg class="w-3.5 h-3.5 text-brand-neon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+								<span>Все названия</span>
+							</button>
+
+							<button onclick="copyCompactList()" title="Скопировать нумерованный список с ценами"
+								class="px-2.5 py-1 rounded-lg bg-[#0c0e12] border border-brand-cardBorder hover:border-brand-neon text-gray-300 hover:text-white text-xs flex items-center gap-1 transition">
+								<span>📝 Список с ценами</span>
+							</button>
+
+							<button onclick="copyTsvData()" title="Скопировать таблицу для Excel / Google Sheets"
+								class="px-2.5 py-1 rounded-lg bg-[#0c0e12] border border-brand-cardBorder hover:border-brand-neon text-gray-300 hover:text-white text-xs flex items-center gap-1 transition">
+								<span>📊 Для Excel/Sheets</span>
+							</button>
+
+							<button onclick="addNewCustomRow()" class="px-2.5 py-1 rounded-lg bg-[#0c0e12] border border-brand-cardBorder hover:border-brand-neon text-xs text-brand-neon flex items-center gap-1 transition ml-1">
 								<span>➕ Добавить товар</span>
 							</button>
 						</div>
@@ -791,42 +810,115 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 
 			items.forEach((item, index) => {
 				const tr = document.createElement('tr');
-				tr.className = 'hover:bg-[#181c26] transition group';
+				tr.className = 'hover:bg-[#181c26] transition group border-b border-brand-cardBorder/40';
 				tr.innerHTML = `
 					<td class="px-4 py-3">
-						<div class="flex items-center gap-2">
-							<input type="text" value="${escapeHtml(item.name)}" onchange="updateItemName(${index}, this.value)"
-								class="bg-transparent text-white font-medium text-xs w-full focus:bg-[#0c0e12] focus:ring-1 focus:ring-brand-neon rounded px-1.5 py-0.5 border border-transparent hover:border-gray-700">
-							<button onclick="copySingleItemName(${index})" title="Скопировать только название" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-brand-neon p-1 transition">
-								📋
+						<div class="flex items-start justify-between gap-2">
+							<div class="flex-1">
+								<div class="flex items-center gap-1.5 flex-wrap">
+									<span onclick="copySingleItemName(${index})" title="Нажмите, чтобы скопировать название"
+										class="text-white font-semibold text-xs hover:text-brand-neon cursor-pointer transition flex items-center gap-1 hover:underline">
+										${escapeHtml(item.name)}
+									</span>
+									<button onclick="copySingleItemName(${index})" title="Скопировать название"
+										class="opacity-60 group-hover:opacity-100 text-gray-400 hover:text-brand-neon px-1 py-0.5 rounded text-[11px] hover:bg-gray-800 transition">
+										📋
+									</button>
+								</div>
+								${item.link ? `<a href="${escapeHtml(item.link)}" target="_blank" class="text-[10px] text-brand-neon/80 hover:text-brand-neon hover:underline truncate max-w-xs block mt-0.5">Перейти к товару ↗</a>` : ''}
+							</div>
+							
+							<!-- Inline Edit Toggle -->
+							<button onclick="promptEditItem(${index})" title="Редактировать название или цену"
+								class="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-gray-300 p-1 rounded hover:bg-gray-800 text-[11px] transition">
+								✏️
 							</button>
 						</div>
-						${item.link ? `<a href="${escapeHtml(item.link)}" target="_blank" class="text-[10px] text-brand-neon hover:underline truncate max-w-xs block mt-0.5">Перейти к товару ↗</a>` : ''}
 					</td>
 					<td class="px-3 py-3 text-center">
 						<div class="inline-flex items-center border border-brand-cardBorder rounded-lg overflow-hidden bg-[#0c0e12]">
-							<button onclick="changeItemQty(${index}, -1)" class="px-2 py-0.5 text-gray-400 hover:text-white hover:bg-gray-800 transition">-</button>
-							<input type="number" min="1" value="${item.qty}" onchange="setItemQty(${index}, this.value)"
-								class="w-10 text-center bg-transparent text-white font-bold text-xs py-0.5 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
-							<button onclick="changeItemQty(${index}, 1)" class="px-2 py-0.5 text-gray-400 hover:text-white hover:bg-gray-800 transition">+</button>
+							<button onclick="changeItemQty(${index}, -1)" title="Уменьшить" class="px-2 py-0.5 text-gray-400 hover:text-white hover:bg-gray-800 transition font-bold">-</button>
+							<span class="w-8 text-center text-white font-bold text-xs py-0.5">${item.qty}</span>
+							<button onclick="changeItemQty(${index}, 1)" title="Увеличить" class="px-2 py-0.5 text-gray-400 hover:text-white hover:bg-gray-800 transition font-bold">+</button>
 						</div>
 					</td>
-					<td class="px-4 py-3 text-right font-mono text-gray-300">
-						<input type="number" step="0.01" value="${Number(item.unit_price).toFixed(2)}" onchange="updateItemPrice(${index}, this.value)"
-							class="w-20 text-right bg-transparent text-gray-300 font-mono text-xs focus:bg-[#0c0e12] focus:ring-1 focus:ring-brand-neon rounded px-1 py-0.5 border border-transparent hover:border-gray-700">
-						${currency}
+					<td class="px-4 py-3 text-right font-mono text-gray-300 cursor-pointer hover:text-brand-neon transition" onclick="copyText('${Number(item.unit_price).toFixed(2)} ${currency}')" title="Кликните, чтобы скопировать цену">
+						${Number(item.unit_price).toFixed(2)} ${currency}
 					</td>
-					<td class="px-4 py-3 text-right font-mono font-bold text-white">
+					<td class="px-4 py-3 text-right font-mono font-bold text-white cursor-pointer hover:text-brand-neon transition" onclick="copyText('${Number(item.total).toFixed(2)} ${currency}')" title="Кликните, чтобы скопировать сумму">
 						${Number(item.total).toFixed(2)} ${currency}
 					</td>
 					<td class="px-3 py-3 text-center">
-						<button onclick="deleteItemRow(${index})" title="Удалить товар из корзины" 
-							class="text-gray-500 hover:text-rose-400 p-1 rounded hover:bg-rose-950/40 transition">
-							🗑️
-						</button>
+						<div class="flex items-center justify-center gap-1">
+							<button onclick="copySingleItemFullLine(${index})" title="Скопировать строку целиком"
+								class="text-gray-400 hover:text-brand-neon p-1 rounded hover:bg-gray-800 transition text-xs">
+								📋
+							</button>
+							<button onclick="deleteItemRow(${index})" title="Удалить товар из корзины" 
+								class="text-gray-500 hover:text-rose-400 p-1 rounded hover:bg-rose-950/40 transition text-xs">
+								🗑️
+							</button>
+						</div>
 					</td>
 				`;
 				tbody.appendChild(tr);
+			});
+		}
+
+		function promptEditItem(index) {
+			if (!currentMatchData || !currentMatchData.match.items[index]) return;
+			const item = currentMatchData.match.items[index];
+			const newName = prompt('Название товара:', item.name);
+			if (newName === null) return;
+			const newPrice = prompt('Цена за штуку:', item.unit_price);
+			if (newPrice === null) return;
+
+			if (newName.trim()) item.name = newName.trim();
+			const p = parseFloat(newPrice);
+			if (!isNaN(p) && p > 0) item.unit_price = p;
+
+			triggerRecalculate();
+			showToast('Товар обновлен.');
+		}
+
+		function copyAllProductNames() {
+			if (!currentMatchData || !currentMatchData.match.items) return;
+			const names = currentMatchData.match.items.map(i => i.name).join('\n');
+			navigator.clipboard.writeText(names).then(() => {
+				showToast(`Скопировано ${currentMatchData.match.items.length} названий товаров!`);
+			});
+		}
+
+		function copyCompactList() {
+			if (!currentMatchData || !currentMatchData.match) return;
+			const list = currentMatchData.compact_list || generateCompactList(currentMatchData.match);
+			navigator.clipboard.writeText(list).then(() => {
+				showToast('Список товаров с ценами скопирован!');
+			});
+		}
+
+		function copyTsvData() {
+			if (!currentMatchData || !currentMatchData.match) return;
+			const tsv = currentMatchData.tsv_data || generateTsvData(currentMatchData.match);
+			navigator.clipboard.writeText(tsv).then(() => {
+				showToast('Таблица скопирована для вставки в Excel / Google Таблицы!');
+			});
+		}
+
+		function copySingleItemFullLine(index) {
+			if (!currentMatchData || !currentMatchData.match.items[index]) return;
+			const item = currentMatchData.match.items[index];
+			const curr = currentMatchData.match.currency || 'EUR';
+			const line = `${item.name}  [x${item.qty} @ ${Number(item.unit_price).toFixed(2)} ${curr}]  =  ${Number(item.total).toFixed(2)} ${curr}`;
+			navigator.clipboard.writeText(line).then(() => {
+				showToast(`Строка скопирована: "${item.name}"`);
+			});
+		}
+
+		function copyText(str) {
+			if (!str) return;
+			navigator.clipboard.writeText(str).then(() => {
+				showToast(`Скопировано: ${str}`);
 			});
 		}
 
