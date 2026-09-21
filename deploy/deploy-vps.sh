@@ -68,27 +68,28 @@ if [ -z "$PHP_SOCK" ]; then
 fi
 echo -e "${GREEN}✓ Found PHP-FPM socket: ${PHP_SOCK}${NC}"
 
-# 4. Copy project files to target directory
-echo -e "\n${YELLOW}[2/5] Deploying files to ${TARGET_DIR}...${NC}"
-mkdir -p "${TARGET_DIR}"
-mkdir -p "${TARGET_DIR}/storage/catalogs"
-mkdir -p "${TARGET_DIR}/storage/temp"
+# 4. Deploy git repository to target directory
+echo -e "\n${YELLOW}[2/5] Deploying repository to ${TARGET_DIR}...${NC}"
+mkdir -p "/var/www/softprojects"
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PARENT_DIR="$( cd "${SCRIPT_DIR}/.." && pwd )"
-
-if [ -d "${PARENT_DIR}/platform" ]; then
-    cp -r "${PARENT_DIR}/platform/"* "${TARGET_DIR}/"
-elif [ -d "./platform" ]; then
-    cp -r ./platform/* "${TARGET_DIR}/"
-elif [ -f "./index.php" ]; then
-    cp -r ./* "${TARGET_DIR}/"
+if [ -d "${TARGET_DIR}/.git" ]; then
+    echo -e "Updating existing repository..."
+    cd "${TARGET_DIR}" && git pull origin main || true
+else
+    rm -rf "${TARGET_DIR}"
+    git clone https://github.com/SHENiiDEV/softprojects-invoice.git "${TARGET_DIR}"
 fi
+
+mkdir -p "${TARGET_DIR}/platform/storage/catalogs"
+mkdir -p "${TARGET_DIR}/platform/storage/temp"
 
 # Set proper permissions
 chown -R www-data:www-data "/var/www/softprojects"
 chmod -R 755 "${TARGET_DIR}"
-chmod -R 777 "${TARGET_DIR}/storage"
+chmod -R 777 "${TARGET_DIR}/platform/storage"
+
+# Safe directory for git
+git config --global --add safe.directory "${TARGET_DIR}" || true
 
 # 5. Create Nginx virtual host configuration
 echo -e "\n${YELLOW}[3/5] Configuring Nginx virtual host...${NC}"
@@ -100,7 +101,7 @@ server {
     listen [::]:80;
     server_name ${DOMAIN};
 
-    root ${TARGET_DIR};
+    root ${TARGET_DIR}/platform;
     index index.php index.html;
 
     access_log /var/log/nginx/${DOMAIN}.access.log;
