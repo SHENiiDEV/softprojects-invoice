@@ -433,25 +433,15 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 							</h3>
 						</div>
 
-						<!-- Quick Copy Bar for Table -->
-						<div class="flex flex-wrap items-center gap-1.5">
-							<button onclick="copyAllProductNames()" title="Скопировать все названия товаров построчно"
-								class="px-2.5 py-1 rounded-lg bg-[#0c0e12] border border-brand-cardBorder hover:border-brand-neon text-gray-300 hover:text-white text-xs flex items-center gap-1 transition">
-								<svg class="w-3.5 h-3.5 text-brand-neon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
-								<span>Все названия</span>
+						<!-- Quick Actions -->
+						<div class="flex flex-wrap items-center gap-2">
+							<button onclick="copyTsvData()" title="Скопировать все столбцы разом для Excel / Google Таблиц"
+								class="px-3 py-1.5 rounded-lg bg-[#0c0e12] border border-brand-cardBorder hover:border-brand-neon text-gray-200 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition">
+								<svg class="w-3.5 h-3.5 text-brand-neon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+								<span>📊 Все столбцы для Excel/Sheets</span>
 							</button>
 
-							<button onclick="copyCompactList()" title="Скопировать нумерованный список с ценами"
-								class="px-2.5 py-1 rounded-lg bg-[#0c0e12] border border-brand-cardBorder hover:border-brand-neon text-gray-300 hover:text-white text-xs flex items-center gap-1 transition">
-								<span>📝 Список с ценами</span>
-							</button>
-
-							<button onclick="copyTsvData()" title="Скопировать таблицу для Excel / Google Sheets"
-								class="px-2.5 py-1 rounded-lg bg-[#0c0e12] border border-brand-cardBorder hover:border-brand-neon text-gray-300 hover:text-white text-xs flex items-center gap-1 transition">
-								<span>📊 Для Excel/Sheets</span>
-							</button>
-
-							<button onclick="addNewCustomRow()" class="px-2.5 py-1 rounded-lg bg-[#0c0e12] border border-brand-cardBorder hover:border-brand-neon text-xs text-brand-neon flex items-center gap-1 transition ml-1">
+							<button onclick="addNewCustomRow()" class="px-3 py-1.5 rounded-lg bg-[#0c0e12] border border-brand-cardBorder hover:border-brand-neon text-xs font-semibold text-brand-neon flex items-center gap-1 transition">
 								<span>➕ Добавить товар</span>
 							</button>
 						</div>
@@ -461,10 +451,42 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 						<table class="w-full text-left text-xs">
 							<thead class="bg-[#0c0e12] text-gray-400 font-semibold border-b border-brand-cardBorder uppercase tracking-wider text-[10px]">
 								<tr>
-									<th class="px-4 py-3">Товар</th>
-									<th class="px-3 py-3 text-center w-28">Кол-во</th>
-									<th class="px-4 py-3 text-right w-28">Цена за шт.</th>
-									<th class="px-4 py-3 text-right w-28">Сумма</th>
+									<th class="px-4 py-3">
+										<div class="flex items-center justify-between gap-2">
+											<span>ТОВАР</span>
+											<button onclick="copyColumnNames()" title="Скопировать только все названия товаров"
+												class="px-2 py-0.5 rounded bg-[#14171f] hover:bg-brand-neon hover:text-black text-brand-neon border border-brand-neon/30 text-[10px] font-bold transition flex items-center gap-1">
+												<span>📋 Копировать названия</span>
+											</button>
+										</div>
+									</th>
+									<th class="px-3 py-3 text-center w-36">
+										<div class="flex items-center justify-center gap-1">
+											<span>КОЛ-ВО</span>
+											<button onclick="copyColumnQuantities()" title="Скопировать столбец количеств"
+												class="px-1.5 py-0.5 rounded bg-[#14171f] hover:bg-brand-neon hover:text-black text-brand-neon border border-brand-neon/30 text-[10px] font-bold transition">
+												📋
+											</button>
+										</div>
+									</th>
+									<th class="px-4 py-3 text-right w-36">
+										<div class="flex items-center justify-end gap-1">
+											<span>ЦЕНА ЗА ШТ.</span>
+											<button onclick="copyColumnUnitPrices()" title="Скопировать столбец цен"
+												class="px-1.5 py-0.5 rounded bg-[#14171f] hover:bg-brand-neon hover:text-black text-brand-neon border border-brand-neon/30 text-[10px] font-bold transition">
+												📋
+											</button>
+										</div>
+									</th>
+									<th class="px-4 py-3 text-right w-36">
+										<div class="flex items-center justify-end gap-1">
+											<span>СУММА</span>
+											<button onclick="copyColumnTotals()" title="Скопировать столбец сумм"
+												class="px-1.5 py-0.5 rounded bg-[#14171f] hover:bg-brand-neon hover:text-black text-brand-neon border border-brand-neon/30 text-[10px] font-bold transition">
+												📋
+											</button>
+										</div>
+									</th>
 									<th class="px-3 py-3 text-center w-20">Действия</th>
 								</tr>
 							</thead>
@@ -475,21 +497,74 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 					</div>
 				</div>
 
+				<!-- Quick Column Copy Cards (For ultra fast copy-pasting into invoices) -->
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+					
+					<!-- Card 1: Names -->
+					<div class="bg-brand-card border border-brand-cardBorder rounded-2xl p-4 flex flex-col justify-between shadow-lg">
+						<div>
+							<div class="flex items-center justify-between mb-2">
+								<span class="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
+									<span class="w-2 h-2 rounded-full bg-brand-neon"></span> 1. Названия товаров
+								</span>
+								<button onclick="copyColumnNames()" class="px-2.5 py-1 bg-brand-neon/10 hover:bg-brand-neon text-brand-neon hover:text-black text-[11px] font-bold rounded-lg transition border border-brand-neon/20">
+									📋 Скопировать
+								</button>
+							</div>
+							<p class="text-[11px] text-gray-400 mb-2">Столбец названий для вставки в строку позиций инвойса</p>
+						</div>
+						<textarea id="colPreviewNames" rows="3" readonly class="w-full bg-[#0c0e12] border border-brand-cardBorder rounded-lg p-2 text-[11px] text-emerald-400 font-mono focus:outline-none custom-scroll select-all"></textarea>
+					</div>
+
+					<!-- Card 2: Quantities -->
+					<div class="bg-brand-card border border-brand-cardBorder rounded-2xl p-4 flex flex-col justify-between shadow-lg">
+						<div>
+							<div class="flex items-center justify-between mb-2">
+								<span class="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
+									<span class="w-2 h-2 rounded-full bg-cyan-400"></span> 2. Количество (Qty)
+								</span>
+								<button onclick="copyColumnQuantities()" class="px-2.5 py-1 bg-cyan-400/10 hover:bg-cyan-400 text-cyan-400 hover:text-black text-[11px] font-bold rounded-lg transition border border-cyan-400/20">
+									📋 Скопировать
+								</button>
+							</div>
+							<p class="text-[11px] text-gray-400 mb-2">Столбец количеств (1, 2, 1...) для вставки в колонку Qty</p>
+						</div>
+						<textarea id="colPreviewQty" rows="3" readonly class="w-full bg-[#0c0e12] border border-brand-cardBorder rounded-lg p-2 text-[11px] text-cyan-300 font-mono focus:outline-none custom-scroll select-all text-center"></textarea>
+					</div>
+
+					<!-- Card 3: Amounts / Totals -->
+					<div class="bg-brand-card border border-brand-cardBorder rounded-2xl p-4 flex flex-col justify-between shadow-lg">
+						<div>
+							<div class="flex items-center justify-between mb-2">
+								<span class="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
+									<span class="w-2 h-2 rounded-full bg-amber-400"></span> 3. Цены / Суммы
+								</span>
+								<button onclick="copyColumnTotals()" class="px-2.5 py-1 bg-amber-400/10 hover:bg-amber-400 text-amber-400 hover:text-black text-[11px] font-bold rounded-lg transition border border-amber-400/20">
+									📋 Скопировать
+								</button>
+							</div>
+							<p class="text-[11px] text-gray-400 mb-2">Столбец итоговых сумм (числовые значения)</p>
+						</div>
+						<textarea id="colPreviewTotals" rows="3" readonly class="w-full bg-[#0c0e12] border border-brand-cardBorder rounded-lg p-2 text-[11px] text-amber-300 font-mono focus:outline-none custom-scroll select-all text-right"></textarea>
+					</div>
+
+				</div>
+
 				<!-- Multi-Format Copy Hub -->
 				<div class="bg-brand-card border border-brand-cardBorder rounded-2xl p-6 shadow-xl">
 					<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
 						<div class="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
 							<svg class="w-4 h-4 text-brand-neon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
-							Форматы копирования данных
+							Все форматы экспорта
 						</div>
 
 						<!-- Copy Tab Switches -->
 						<div class="flex flex-wrap gap-1.5 bg-[#0c0e12] p-1 rounded-xl border border-brand-cardBorder text-xs">
 							<button onclick="switchCopyTab('receipt')" id="tabBtn-receipt" class="px-2.5 py-1 rounded-lg font-semibold bg-brand-cardBorder text-brand-neon transition">
-								📋 Чек
+								📋 Полный чек
 							</button>
 							<button onclick="switchCopyTab('compact')" id="tabBtn-compact" class="px-2.5 py-1 rounded-lg font-semibold text-gray-400 hover:text-white transition">
-								📝 Список
+								📝 Список позиций
 							</button>
 							<button onclick="switchCopyTab('tsv')" id="tabBtn-tsv" class="px-2.5 py-1 rounded-lg font-semibold text-gray-400 hover:text-white transition">
 								📊 Excel / Sheets
@@ -504,7 +579,7 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 					</div>
 
 					<div class="relative">
-						<textarea id="resCopyTextarea" rows="8" readonly
+						<textarea id="resCopyTextarea" rows="6" readonly
 							class="w-full bg-[#0c0e12] border border-brand-cardBorder rounded-xl p-4 font-mono text-xs text-emerald-400/90 overflow-x-auto custom-scroll leading-relaxed focus:outline-none focus:border-brand-neon select-all"></textarea>
 						
 						<button onclick="copyCurrentTabContent()" id="btnCopyMain"
@@ -802,6 +877,7 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 
 			renderTableRows(m.items, m.currency);
 			updateCopyHub(data);
+			updateColumnPreviews(m);
 		}
 
 		function renderTableRows(items, currency) {
@@ -881,12 +957,50 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 			showToast('Товар обновлен.');
 		}
 
-		function copyAllProductNames() {
+		function updateColumnPreviews(match) {
+			if (!match || !match.items) return;
+			const pNames = document.getElementById('colPreviewNames');
+			const pQty = document.getElementById('colPreviewQty');
+			const pTotals = document.getElementById('colPreviewTotals');
+			if (pNames) pNames.value = match.items.map(i => i.name).join('\n');
+			if (pQty) pQty.value = match.items.map(i => i.qty).join('\n');
+			if (pTotals) pTotals.value = match.items.map(i => Number(i.total).toFixed(2)).join('\n');
+		}
+
+		function copyColumnNames() {
 			if (!currentMatchData || !currentMatchData.match.items) return;
 			const names = currentMatchData.match.items.map(i => i.name).join('\n');
 			navigator.clipboard.writeText(names).then(() => {
-				showToast(`Скопировано ${currentMatchData.match.items.length} названий товаров!`);
+				showToast(`Скопирован столбец названий (${currentMatchData.match.items.length} поз.)`);
 			});
+		}
+
+		function copyColumnQuantities() {
+			if (!currentMatchData || !currentMatchData.match.items) return;
+			const quantities = currentMatchData.match.items.map(i => i.qty).join('\n');
+			navigator.clipboard.writeText(quantities).then(() => {
+				showToast(`Скопирован столбец количеств (${currentMatchData.match.items.length} поз.)`);
+			});
+		}
+
+		function copyColumnTotals() {
+			if (!currentMatchData || !currentMatchData.match.items) return;
+			const totals = currentMatchData.match.items.map(i => Number(i.total).toFixed(2)).join('\n');
+			navigator.clipboard.writeText(totals).then(() => {
+				showToast(`Скопирован столбец сумм (${currentMatchData.match.items.length} поз.)`);
+			});
+		}
+
+		function copyColumnUnitPrices() {
+			if (!currentMatchData || !currentMatchData.match.items) return;
+			const prices = currentMatchData.match.items.map(i => Number(i.unit_price).toFixed(2)).join('\n');
+			navigator.clipboard.writeText(prices).then(() => {
+				showToast(`Скопирован столбец цен за штуку (${currentMatchData.match.items.length} поз.)`);
+			});
+		}
+
+		function copyAllProductNames() {
+			copyColumnNames();
 		}
 
 		function copyCompactList() {
