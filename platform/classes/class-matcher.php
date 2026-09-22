@@ -193,11 +193,17 @@ class Universal_Catalog_Matcher {
 			$matched_items = self::reconstruct_items( $dp, $expanded, $best_sum );
 			$diff_cents    = $subtotal_target_cents - $best_sum;
 
-			// Adjust diff directly on the last product
-			$last_idx = count( $matched_items ) - 1;
-			$matched_items[ $last_idx ]['total_cents'] += $diff_cents;
-			$matched_items[ $last_idx ]['total'] = round( $matched_items[ $last_idx ]['total_cents'] / 100, 2 );
-			$matched_items[ $last_idx ]['unit_price'] = round( $matched_items[ $last_idx ]['total'] / $matched_items[ $last_idx ]['qty'], 2 );
+			// Distribute diff evenly in cents across all items
+			$n_items        = count( $matched_items );
+			$cents_per_item = (int) intdiv( $diff_cents, $n_items );
+			$rem_diff       = $diff_cents % $n_items;
+
+			for ( $i = 0; $i < $n_items; $i++ ) {
+				$add = $cents_per_item + ( $i < abs( $rem_diff ) ? ( $rem_diff > 0 ? 1 : -1 ) : 0 );
+				$matched_items[ $i ]['total_cents'] += $add;
+				$matched_items[ $i ]['total']        = round( $matched_items[ $i ]['total_cents'] / 100, 2 );
+				$matched_items[ $i ]['unit_price']   = round( $matched_items[ $i ]['total'] / $matched_items[ $i ]['qty'], 2 );
+			}
 
 			return self::format_result( $matched_items, $subtotal_target_cents, $shipping_info, $target_amount, $target_currency, $diff_cents );
 		}
@@ -261,7 +267,13 @@ class Universal_Catalog_Matcher {
 	}
 
 	/**
-	 * Solve Knapsack DP with maximum item count constraint.
+	 * Solve Knapsack DP with maximum item positions constraint.
+	 *
+	 * When N positions are requested:
+	 * 1. Picks N distinct products from catalog.
+	 * 2. If base sum with qty=1 is <= target, solves knapsack on remaining amount to assign natural integer quantities (qty = 1, 2, 3...) so every item keeps its real unit price!
+	 * 3. Any minor difference (cents) is distributed evenly across all items so NO single item is inflated.
+	 * 4. If base sum > target, scales uniformly across all N items.
 	 *
 	 * @param array $items_pool
 	 * @param int   $subtotal_target_cents
@@ -272,9 +284,12 @@ class Universal_Catalog_Matcher {
 	private static function solve_constrained_knapsack( $items_pool, $subtotal_target_cents, $max_items, $max_copies = 2 ) {
 		$max_items = max( 1, (int) $max_items );
 
-		// Special case: 1 item requested
+		if ( empty( $items_pool ) ) {
+			return array();
+		}
+
+		// 1. Single item requested: find product closest to target
 		if ( $max_items === 1 ) {
-			// 1. Exact match
 			foreach ( $items_pool as $p ) {
 				if ( (int) $p['price_cents'] === $subtotal_target_cents ) {
 					return array(
@@ -291,7 +306,7 @@ class Universal_Catalog_Matcher {
 				}
 			}
 
-			// 2. Closest item scaled to subtotal
+			// Find closest item
 			$best_item = $items_pool[0];
 			$min_diff  = abs( $best_item['price_cents'] - $subtotal_target_cents );
 			foreach ( $items_pool as $p ) {
@@ -316,103 +331,152 @@ class Universal_Catalog_Matcher {
 			);
 		}
 
-		$expanded = array();
-		// Prefer distinct unique products so each picked item is a distinct position (row)
-		if ( count( $items_pool ) >= $max_items ) {
-			foreach ( $items_pool as $item ) {
-				$expanded[] = $item;
-			}
-		} else {
-			$copies_needed = (int) ceil( $max_items / max( 1, count( $items_pool ) ) );
-			foreach ( $items_pool as $item ) {
-				for ( $k = 1; $k <= $copies_needed; $k++ ) {
-					$expanded[] = $item;
-				}
-			}
-		}
-		shuffle( $expanded );
+		// 2. Multi-position matching: Pick N distinct items
+		$target_count = min( $max_items, count( $items_pool ) );
 
-		// 2D DP table: $dp[count][sum] = ['prev_s' => int, 'prev_c' => int, 'idx' => int]
-		$dp = array();
-		$dp[0][0] = array(
-			'prev_s' => -1,
-			'prev_c' => -1,
-			'idx'    => -1,
-		);
+		// Run multiple randomized trials to find the best combination minimizing residual
+		$best_matched_items = null;
+		$best_residual      = PHP_INT_MAX;
 
-		foreach ( $expanded as $idx => $item ) {
-			$cost = (int) $item['price_cents'];
-			if ( $cost <= 0 || $cost > $subtotal_target_cents ) {
-				continue;
+		for ( $trial = 0; $trial < 25; $trial++ ) {
+			$pool_copy = $items_pool;
+			shuffle( $pool_copy );
+			$selected_products = array_slice( $pool_copy, 0, $target_count );
+
+			$base_cents = 0;
+			foreach ( $selected_products as $p ) {
+				$base_cents += (int) $p['price_cents'];
 			}
 
-			for ( $c = $max_items; $c >= 1; $c-- ) {
-				$prev_c = $c - 1;
-				if ( ! isset( $dp[ $prev_c ] ) ) {
-					continue;
-				}
+			if ( $base_cents <= $subtotal_target_cents ) {
+				// Allocate quantities using DP on remaining amount
+				$rem_cents = $subtotal_target_cents - $base_cents;
 
-				foreach ( $dp[ $prev_c ] as $prev_s => $info ) {
-					$new_s = $prev_s + $cost;
-					if ( $new_s <= $subtotal_target_cents ) {
-						if ( ! isset( $dp[ $c ][ $new_s ] ) ) {
-							$dp[ $c ][ $new_s ] = array(
-								'prev_s' => $prev_s,
-								'prev_c' => $prev_c,
-								'idx'    => $idx,
+				// DP for remaining amount using selected products' prices
+				$dp_rem = array( 0 => array( 'prev' => -1, 'prod_idx' => -1 ) );
+				foreach ( $selected_products as $p_idx => $p ) {
+					$cost = (int) $p['price_cents'];
+					if ( $cost <= 0 ) {
+						continue;
+					}
+					for ( $s = $cost; $s <= $rem_cents; $s++ ) {
+						$prev_s = $s - $cost;
+						if ( isset( $dp_rem[ $prev_s ] ) && ! isset( $dp_rem[ $s ] ) ) {
+							$dp_rem[ $s ] = array(
+								'prev'     => $prev_s,
+								'prod_idx' => $p_idx,
 							);
 						}
 					}
 				}
-			}
-		}
 
-		// 1. Check exact match for subtotal_target_cents with c <= max_items
-		for ( $c = $max_items; $c >= 1; $c-- ) {
-			if ( isset( $dp[ $c ][ $subtotal_target_cents ] ) ) {
-				return self::reconstruct_2d_items( $dp, $expanded, $c, $subtotal_target_cents );
-			}
-		}
+				// Find best reachable sum on remaining
+				$reached_rem = 0;
+				for ( $s = $rem_cents; $s >= 0; $s-- ) {
+					if ( isset( $dp_rem[ $s ] ) ) {
+						$reached_rem = $s;
+						break;
+					}
+				}
 
-		// 2. Find closest sum <= subtotal_target_cents across valid counts
-		$best_s = 0;
-		$best_c = 0;
-		for ( $s = $subtotal_target_cents; $s >= 0; $s-- ) {
-			for ( $c = 1; $c <= $max_items; $c++ ) {
-				if ( isset( $dp[ $c ][ $s ] ) && $s > $best_s ) {
-					$best_s = $s;
-					$best_c = $c;
-					break 2;
+				// Trace quantities
+				$qty_addons = array_fill( 0, $target_count, 0 );
+				$curr_s     = $reached_rem;
+				while ( $curr_s > 0 && isset( $dp_rem[ $curr_s ] ) && $dp_rem[ $curr_s ]['prod_idx'] !== -1 ) {
+					$p_idx = $dp_rem[ $curr_s ]['prod_idx'];
+					$qty_addons[ $p_idx ]++;
+					$curr_s = $dp_rem[ $curr_s ]['prev'];
+				}
+
+				$trial_items      = array();
+				$total_allocated  = 0;
+				foreach ( $selected_products as $p_idx => $p ) {
+					$q                = 1 + $qty_addons[ $p_idx ];
+					$line_total_cents = $q * (int) $p['price_cents'];
+					$total_allocated += $line_total_cents;
+					$trial_items[]    = array(
+						'name'        => $p['name'],
+						'sku'         => $p['sku'],
+						'qty'         => $q,
+						'unit_price'  => $p['price'],
+						'total'       => round( $line_total_cents / 100, 2 ),
+						'total_cents' => $line_total_cents,
+						'link'        => ! empty( $p['link'] ) ? $p['link'] : '',
+					);
+				}
+
+				$residual = $subtotal_target_cents - $total_allocated;
+				if ( $residual < $best_residual ) {
+					$best_residual      = $residual;
+					$best_matched_items = $trial_items;
+					if ( $residual === 0 ) {
+						break; // Exact match found!
+					}
+				}
+			} else {
+				// Base sum exceeds target: proportional uniform scaling
+				$trial_items     = array();
+				$total_allocated = 0;
+				foreach ( $selected_products as $p ) {
+					$scaled_price    = round( ( (int) $p['price_cents'] / $base_cents ) * ( $subtotal_target_cents / 100 ), 2 );
+					$scaled_cents    = (int) round( $scaled_price * 100 );
+					$total_allocated += $scaled_cents;
+					$trial_items[]   = array(
+						'name'        => $p['name'],
+						'sku'         => $p['sku'],
+						'qty'         => 1,
+						'unit_price'  => $scaled_price,
+						'total'       => $scaled_price,
+						'total_cents' => $scaled_cents,
+						'link'        => ! empty( $p['link'] ) ? $p['link'] : '',
+					);
+				}
+				$residual = abs( $subtotal_target_cents - $total_allocated );
+				if ( $residual < $best_residual ) {
+					$best_residual      = $residual;
+					$best_matched_items = $trial_items;
 				}
 			}
 		}
 
-		if ( $best_s > 0 && $best_c > 0 ) {
-			$matched_items = self::reconstruct_2d_items( $dp, $expanded, $best_c, $best_s );
-			$diff_cents    = $subtotal_target_cents - $best_s;
-
-			$last_idx = count( $matched_items ) - 1;
-			$matched_items[ $last_idx ]['total_cents'] += $diff_cents;
-			$matched_items[ $last_idx ]['total'] = round( $matched_items[ $last_idx ]['total_cents'] / 100, 2 );
-			$matched_items[ $last_idx ]['unit_price'] = round( $matched_items[ $last_idx ]['total'] / $matched_items[ $last_idx ]['qty'], 2 );
-
-			return $matched_items;
+		if ( empty( $best_matched_items ) ) {
+			// Fallback: 1 item scaled
+			$first_p = $items_pool[0];
+			$sub_val = round( $subtotal_target_cents / 100, 2 );
+			return array(
+				array(
+					'name'        => $first_p['name'],
+					'sku'         => $first_p['sku'],
+					'qty'         => 1,
+					'unit_price'  => $sub_val,
+					'total'       => $sub_val,
+					'total_cents' => $subtotal_target_cents,
+					'link'        => ! empty( $first_p['link'] ) ? $first_p['link'] : '',
+				),
+			);
 		}
 
-		// Fallback: 1 item scaled
-		$first_p = $items_pool[0];
-		$sub_val = round( $subtotal_target_cents / 100, 2 );
-		return array(
-			array(
-				'name'        => $first_p['name'],
-				'sku'         => $first_p['sku'],
-				'qty'         => 1,
-				'unit_price'  => $sub_val,
-				'total'       => $sub_val,
-				'total_cents' => $subtotal_target_cents,
-				'link'        => ! empty( $first_p['link'] ) ? $first_p['link'] : '',
-			),
-		);
+		// Distribute any remaining difference evenly in cents across items
+		$total_current = 0;
+		foreach ( $best_matched_items as $item ) {
+			$total_current += $item['total_cents'];
+		}
+		$diff_cents = $subtotal_target_cents - $total_current;
+
+		if ( $diff_cents !== 0 ) {
+			$n_items        = count( $best_matched_items );
+			$cents_per_item = (int) intdiv( $diff_cents, $n_items );
+			$rem_diff       = $diff_cents % $n_items;
+
+			for ( $i = 0; $i < $n_items; $i++ ) {
+				$add = $cents_per_item + ( $i < abs( $rem_diff ) ? ( $rem_diff > 0 ? 1 : -1 ) : 0 );
+				$best_matched_items[ $i ]['total_cents'] += $add;
+				$best_matched_items[ $i ]['total']        = round( $best_matched_items[ $i ]['total_cents'] / 100, 2 );
+				$best_matched_items[ $i ]['unit_price']   = round( $best_matched_items[ $i ]['total'] / $best_matched_items[ $i ]['qty'], 2 );
+			}
+		}
+
+		return $best_matched_items;
 	}
 
 	/**
