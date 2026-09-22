@@ -123,8 +123,12 @@ if ( $action === 'match' ) {
 		$store_name = 'DREZZA';
 	}
 
-	// 2. Match products with custom shipping options
+	// 2. Match products with custom shipping and items options
 	$custom_options = array();
+	if ( ! empty( $input['max_items'] ) && is_numeric( $input['max_items'] ) ) {
+		$custom_options['max_items'] = max( 1, (int) $input['max_items'] );
+	}
+
 	if ( isset( $input['shipping_mode'] ) && $input['shipping_mode'] === 'manual' ) {
 		$custom_options['shipping_cost'] = isset( $input['shipping_cost'] ) ? (float) str_replace( array( ',', ' ' ), array( '.', '' ), $input['shipping_cost'] ) : 0.0;
 		if ( ! empty( $input['shipping_title'] ) ) {

@@ -131,8 +131,16 @@ class Universal_Catalog_Matcher {
 		}
 
 		// 3. Solve Bounded Knapsack DP (max 2 duplicates per item, cap 3)
-		$max_copies = isset( $custom_options['max_qty'] ) ? (int) $custom_options['max_qty'] : 2;
-		$expanded   = array();
+		$max_copies      = isset( $custom_options['max_qty'] ) ? (int) $custom_options['max_qty'] : 2;
+		$max_items_limit = isset( $custom_options['max_items'] ) ? (int) $custom_options['max_items'] : 0;
+
+		// If user specified a manual maximum/exact items limit
+		if ( $max_items_limit > 0 ) {
+			$matched_items = self::solve_constrained_knapsack( $items_pool, $subtotal_target_cents, $max_items_limit, $max_copies );
+			return self::format_result( $matched_items, $subtotal_target_cents, $shipping_info, $target_amount, $target_currency );
+		}
+
+		$expanded = array();
 		foreach ( $items_pool as $item ) {
 			for ( $k = 1; $k <= $max_copies; $k++ ) {
 				$expanded[] = $item;
@@ -230,6 +238,196 @@ class Universal_Catalog_Matcher {
 		}
 
 		// Group items by name
+		$grouped = array();
+		foreach ( $raw_picked as $p ) {
+			$k = $p['name'];
+			if ( ! isset( $grouped[ $k ] ) ) {
+				$grouped[ $k ] = array(
+					'name'        => $p['name'],
+					'sku'         => $p['sku'],
+					'qty'         => 0,
+					'unit_price'  => $p['price'],
+					'total'       => 0.0,
+					'total_cents' => 0,
+					'link'        => ! empty( $p['link'] ) ? $p['link'] : '',
+				);
+			}
+			$grouped[ $k ]['qty']++;
+			$grouped[ $k ]['total_cents'] += $p['price_cents'];
+			$grouped[ $k ]['total'] = round( $grouped[ $k ]['total_cents'] / 100, 2 );
+		}
+
+		return array_values( $grouped );
+	}
+
+	/**
+	 * Solve Knapsack DP with maximum item count constraint.
+	 *
+	 * @param array $items_pool
+	 * @param int   $subtotal_target_cents
+	 * @param int   $max_items
+	 * @param int   $max_copies
+	 * @return array
+	 */
+	private static function solve_constrained_knapsack( $items_pool, $subtotal_target_cents, $max_items, $max_copies = 2 ) {
+		$max_items = max( 1, (int) $max_items );
+
+		// Special case: 1 item requested
+		if ( $max_items === 1 ) {
+			// 1. Exact match
+			foreach ( $items_pool as $p ) {
+				if ( (int) $p['price_cents'] === $subtotal_target_cents ) {
+					return array(
+						array(
+							'name'        => $p['name'],
+							'sku'         => $p['sku'],
+							'qty'         => 1,
+							'unit_price'  => $p['price'],
+							'total'       => $p['price'],
+							'total_cents' => $p['price_cents'],
+							'link'        => ! empty( $p['link'] ) ? $p['link'] : '',
+						),
+					);
+				}
+			}
+
+			// 2. Closest item scaled to subtotal
+			$best_item = $items_pool[0];
+			$min_diff  = abs( $best_item['price_cents'] - $subtotal_target_cents );
+			foreach ( $items_pool as $p ) {
+				$diff = abs( $p['price_cents'] - $subtotal_target_cents );
+				if ( $diff < $min_diff ) {
+					$min_diff  = $diff;
+					$best_item = $p;
+				}
+			}
+
+			$unit_p = round( $subtotal_target_cents / 100, 2 );
+			return array(
+				array(
+					'name'        => $best_item['name'],
+					'sku'         => $best_item['sku'],
+					'qty'         => 1,
+					'unit_price'  => $unit_p,
+					'total'       => $unit_p,
+					'total_cents' => $subtotal_target_cents,
+					'link'        => ! empty( $best_item['link'] ) ? $best_item['link'] : '',
+				),
+			);
+		}
+
+		$expanded = array();
+		foreach ( $items_pool as $item ) {
+			for ( $k = 1; $k <= $max_copies; $k++ ) {
+				$expanded[] = $item;
+			}
+		}
+		shuffle( $expanded );
+
+		// 2D DP table: $dp[count][sum] = ['prev_s' => int, 'prev_c' => int, 'idx' => int]
+		$dp = array();
+		$dp[0][0] = array(
+			'prev_s' => -1,
+			'prev_c' => -1,
+			'idx'    => -1,
+		);
+
+		foreach ( $expanded as $idx => $item ) {
+			$cost = (int) $item['price_cents'];
+			if ( $cost <= 0 || $cost > $subtotal_target_cents ) {
+				continue;
+			}
+
+			for ( $c = $max_items; $c >= 1; $c-- ) {
+				$prev_c = $c - 1;
+				if ( ! isset( $dp[ $prev_c ] ) ) {
+					continue;
+				}
+
+				foreach ( $dp[ $prev_c ] as $prev_s => $info ) {
+					$new_s = $prev_s + $cost;
+					if ( $new_s <= $subtotal_target_cents ) {
+						if ( ! isset( $dp[ $c ][ $new_s ] ) ) {
+							$dp[ $c ][ $new_s ] = array(
+								'prev_s' => $prev_s,
+								'prev_c' => $prev_c,
+								'idx'    => $idx,
+							);
+						}
+					}
+				}
+			}
+		}
+
+		// 1. Check exact match for subtotal_target_cents with c <= max_items
+		for ( $c = $max_items; $c >= 1; $c-- ) {
+			if ( isset( $dp[ $c ][ $subtotal_target_cents ] ) ) {
+				return self::reconstruct_2d_items( $dp, $expanded, $c, $subtotal_target_cents );
+			}
+		}
+
+		// 2. Find closest sum <= subtotal_target_cents across valid counts
+		$best_s = 0;
+		$best_c = 0;
+		for ( $s = $subtotal_target_cents; $s >= 0; $s-- ) {
+			for ( $c = 1; $c <= $max_items; $c++ ) {
+				if ( isset( $dp[ $c ][ $s ] ) && $s > $best_s ) {
+					$best_s = $s;
+					$best_c = $c;
+					break 2;
+				}
+			}
+		}
+
+		if ( $best_s > 0 && $best_c > 0 ) {
+			$matched_items = self::reconstruct_2d_items( $dp, $expanded, $best_c, $best_s );
+			$diff_cents    = $subtotal_target_cents - $best_s;
+
+			$last_idx = count( $matched_items ) - 1;
+			$matched_items[ $last_idx ]['total_cents'] += $diff_cents;
+			$matched_items[ $last_idx ]['total'] = round( $matched_items[ $last_idx ]['total_cents'] / 100, 2 );
+			$matched_items[ $last_idx ]['unit_price'] = round( $matched_items[ $last_idx ]['total'] / $matched_items[ $last_idx ]['qty'], 2 );
+
+			return $matched_items;
+		}
+
+		// Fallback: 1 item scaled
+		$first_p = $items_pool[0];
+		$sub_val = round( $subtotal_target_cents / 100, 2 );
+		return array(
+			array(
+				'name'        => $first_p['name'],
+				'sku'         => $first_p['sku'],
+				'qty'         => 1,
+				'unit_price'  => $sub_val,
+				'total'       => $sub_val,
+				'total_cents' => $subtotal_target_cents,
+				'link'        => ! empty( $first_p['link'] ) ? $first_p['link'] : '',
+			),
+		);
+	}
+
+	/**
+	 * Reconstruct grouped items from 2D DP path.
+	 *
+	 * @param array $dp
+	 * @param array $expanded
+	 * @param int   $start_c
+	 * @param int   $start_s
+	 * @return array
+	 */
+	private static function reconstruct_2d_items( $dp, $expanded, $start_c, $start_s ) {
+		$raw_picked = array();
+		$curr_c     = $start_c;
+		$curr_s     = $start_s;
+
+		while ( $curr_c > 0 && $curr_s > 0 && isset( $dp[ $curr_c ][ $curr_s ] ) && $dp[ $curr_c ][ $curr_s ]['idx'] !== -1 ) {
+			$info         = $dp[ $curr_c ][ $curr_s ];
+			$raw_picked[] = $expanded[ $info['idx'] ];
+			$curr_c       = $info['prev_c'];
+			$curr_s       = $info['prev_s'];
+		}
+
 		$grouped = array();
 		foreach ( $raw_picked as $p ) {
 			$k = $p['name'];

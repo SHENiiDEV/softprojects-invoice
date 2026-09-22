@@ -274,6 +274,49 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 						</div>
 					</div>
 
+					<!-- Items Count Limiter / Mode -->
+					<div class="border border-brand-cardBorder rounded-xl bg-[#0c0e12]/60 p-4 space-y-3">
+						<div class="flex items-center justify-between text-xs font-bold text-gray-300 uppercase tracking-wider">
+							<span>Количество позиций</span>
+							<span id="itemsLimitLabel" class="text-[11px] text-brand-neon font-normal">Авто (умный подбор)</span>
+						</div>
+
+						<div class="grid grid-cols-2 gap-2 text-xs">
+							<label class="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-[#14171f] border border-brand-cardBorder cursor-pointer hover:border-brand-neon/60 transition has-[:checked]:border-brand-neon has-[:checked]:bg-brand-neon/10">
+								<input type="radio" name="itemCountMode" value="auto" checked onchange="updateItemCountModeUI()" class="text-brand-neon focus:ring-0">
+								<span class="text-[11px] text-gray-200">⚡ Автоматически</span>
+							</label>
+							<label class="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-[#14171f] border border-brand-cardBorder cursor-pointer hover:border-brand-neon/60 transition has-[:checked]:border-brand-neon has-[:checked]:bg-brand-neon/10">
+								<input type="radio" name="itemCountMode" value="manual" onchange="updateItemCountModeUI()" class="text-brand-neon focus:ring-0">
+								<span class="text-[11px] text-gray-200">🎯 Лимит товаров</span>
+							</label>
+						</div>
+
+						<!-- Manual Max Items Selector & Quick Chips -->
+						<div id="manualItemCountContainer" class="hidden space-y-2.5 pt-1">
+							<div class="flex items-center justify-between gap-3 bg-[#14171f] p-2.5 rounded-lg border border-brand-cardBorder">
+								<div>
+									<label class="block text-xs text-white font-medium">Максимум товаров в чеке</label>
+									<span class="text-[10px] text-gray-400">Алгоритм подберет не больше указанного числа</span>
+								</div>
+								<div class="flex items-center gap-1.5">
+									<button type="button" onclick="adjustMaxItems(-1)" class="w-7 h-7 rounded bg-[#0c0e12] border border-brand-cardBorder hover:border-brand-neon text-gray-300 hover:text-white flex items-center justify-center font-bold text-xs transition active:scale-95">-</button>
+									<input type="number" id="maxItemsInput" min="1" max="20" value="3" oninput="updateItemCountLabel()"
+										class="w-12 bg-[#0c0e12] border border-brand-cardBorder rounded px-1 py-1 text-xs text-brand-neon text-center font-bold font-mono focus:outline-none focus:border-brand-neon">
+									<button type="button" onclick="adjustMaxItems(1)" class="w-7 h-7 rounded bg-[#0c0e12] border border-brand-cardBorder hover:border-brand-neon text-gray-300 hover:text-white flex items-center justify-center font-bold text-xs transition active:scale-95">+</button>
+								</div>
+							</div>
+							<div class="flex items-center gap-1.5 pt-0.5 flex-wrap">
+								<span class="text-[10px] text-gray-500">Быстро:</span>
+								<button type="button" onclick="setMaxItemsVal(1)" class="px-2 py-0.5 rounded bg-[#14171f] hover:bg-brand-neon/20 hover:text-brand-neon text-[10px] text-gray-300 border border-brand-cardBorder transition">1 товар</button>
+								<button type="button" onclick="setMaxItemsVal(2)" class="px-2 py-0.5 rounded bg-[#14171f] hover:bg-brand-neon/20 hover:text-brand-neon text-[10px] text-gray-300 border border-brand-cardBorder transition">2 тов.</button>
+								<button type="button" onclick="setMaxItemsVal(3)" class="px-2 py-0.5 rounded bg-[#14171f] hover:bg-brand-neon/20 hover:text-brand-neon text-[10px] text-gray-300 border border-brand-cardBorder transition">3 тов.</button>
+								<button type="button" onclick="setMaxItemsVal(4)" class="px-2 py-0.5 rounded bg-[#14171f] hover:bg-brand-neon/20 hover:text-brand-neon text-[10px] text-gray-300 border border-brand-cardBorder transition">4 тов.</button>
+								<button type="button" onclick="setMaxItemsVal(5)" class="px-2 py-0.5 rounded bg-[#14171f] hover:bg-brand-neon/20 hover:text-brand-neon text-[10px] text-gray-300 border border-brand-cardBorder transition">5 тов.</button>
+							</div>
+						</div>
+					</div>
+
 					<!-- Customer / Billing Data Accordion -->
 					<div class="border border-brand-cardBorder rounded-xl bg-[#0c0e12]/60 p-4 space-y-3">
 						<div class="flex items-center justify-between text-xs font-bold text-gray-300 uppercase tracking-wider">
@@ -759,6 +802,38 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 			}
 		}
 
+		function updateItemCountModeUI() {
+			const mode = document.querySelector('input[name="itemCountMode"]:checked').value;
+			const container = document.getElementById('manualItemCountContainer');
+			const label = document.getElementById('itemsLimitLabel');
+			const val = parseInt(document.getElementById('maxItemsInput').value) || 3;
+
+			if (mode === 'manual') {
+				container.classList.remove('hidden');
+				label.textContent = `Лимит: до ${val} тов.`;
+			} else {
+				container.classList.add('hidden');
+				label.textContent = 'Авто (умный подбор)';
+			}
+		}
+
+		function updateItemCountLabel() {
+			const val = Math.max(1, Math.min(20, parseInt(document.getElementById('maxItemsInput').value) || 1));
+			document.getElementById('itemsLimitLabel').textContent = `Лимит: до ${val} тов.`;
+		}
+
+		function setMaxItemsVal(val) {
+			document.getElementById('maxItemsInput').value = val;
+			updateItemCountLabel();
+		}
+
+		function adjustMaxItems(delta) {
+			const cur = parseInt(document.getElementById('maxItemsInput').value) || 3;
+			const next = Math.max(1, Math.min(20, cur + delta));
+			document.getElementById('maxItemsInput').value = next;
+			updateItemCountLabel();
+		}
+
 		function setAmount(val) {
 			document.getElementById('targetAmount').value = val.toFixed(2);
 		}
@@ -796,6 +871,12 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 			const manualShippingCost = document.getElementById('manualShippingCost').value.trim();
 			const manualShippingTitle = document.getElementById('manualShippingTitle').value.trim();
 
+			const itemCountMode = document.querySelector('input[name="itemCountMode"]:checked').value;
+			let maxItems = 0;
+			if (itemCountMode === 'manual') {
+				maxItems = parseInt(document.getElementById('maxItemsInput').value) || 3;
+			}
+
 			const customer = {
 				card_pan: document.getElementById('cardPan').value.trim(),
 				order_id: document.getElementById('orderId').value.trim(),
@@ -814,7 +895,8 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 				currency,
 				force_refresh: forceRefresh,
 				customer,
-				shipping_mode: shippingMode
+				shipping_mode: shippingMode,
+				max_items: maxItems
 			};
 
 			if (shippingMode === 'manual') {

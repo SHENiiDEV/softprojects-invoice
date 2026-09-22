@@ -104,6 +104,23 @@ assert( $match_200['total_cents'] === 20000 );
 assert( $match_200['shipping']['cost_cents'] === 0 );
 echo "✓ 200.00 EUR order verified!\n\n";
 
+// Test max_items = 1 constraint
+$match_single = Universal_Catalog_Matcher::match_amount( $test_catalog, 150.00, 'EUR', array( 'max_items' => 1 ) );
+echo "Test 150.00 EUR with max_items = 1:\n";
+echo "  - Items count: " . count( $match_single['items'] ) . "\n";
+echo "  - Item: " . $match_single['items'][0]['name'] . " @ " . $match_single['items'][0]['total'] . " EUR\n";
+assert( count( $match_single['items'] ) === 1, 'Must have exactly 1 item' );
+assert( $match_single['total_cents'] === 15000, 'Total must match 150.00 EUR' );
+echo "✓ 1-item constraint verified!\n\n";
+
+// Test max_items = 2 constraint
+$match_two = Universal_Catalog_Matcher::match_amount( $test_catalog, 185.00, 'EUR', array( 'max_items' => 2 ) );
+echo "Test 185.00 EUR with max_items = 2:\n";
+echo "  - Items count: " . count( $match_two['items'] ) . "\n";
+assert( count( $match_two['items'] ) <= 2, 'Must have at most 2 items' );
+assert( $match_two['total_cents'] === 18500, 'Total must match 185.00 EUR' );
+echo "✓ 2-items constraint verified!\n\n";
+
 echo "=== 3. Testing Text Receipt Formatter ===\n";
 $customer = array(
 	'order_id' => 'DRZ-37708',
