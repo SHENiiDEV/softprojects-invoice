@@ -277,7 +277,7 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 					<!-- Items Count Limiter / Mode -->
 					<div class="border border-brand-cardBorder rounded-xl bg-[#0c0e12]/60 p-4 space-y-3">
 						<div class="flex items-center justify-between text-xs font-bold text-gray-300 uppercase tracking-wider">
-							<span>Количество позиций</span>
+							<span>Количество товаров в чеке</span>
 							<span id="itemsLimitLabel" class="text-[11px] text-brand-neon font-normal">Авто (умный подбор)</span>
 						</div>
 
@@ -296,12 +296,12 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 						<div id="manualItemCountContainer" class="hidden space-y-2.5 pt-1">
 							<div class="flex items-center justify-between gap-3 bg-[#14171f] p-2.5 rounded-lg border border-brand-cardBorder">
 								<div>
-									<label class="block text-xs text-white font-medium">Максимум товаров в чеке</label>
-									<span class="text-[10px] text-gray-400">Алгоритм подберет не больше указанного числа</span>
+									<label class="block text-xs text-white font-medium">Максимум товаров (строк):</label>
+									<span class="text-[10px] text-gray-400">Сколько позиций товаров добавить в инвойс</span>
 								</div>
 								<div class="flex items-center gap-1.5">
 									<button type="button" onclick="adjustMaxItems(-1)" class="w-7 h-7 rounded bg-[#0c0e12] border border-brand-cardBorder hover:border-brand-neon text-gray-300 hover:text-white flex items-center justify-center font-bold text-xs transition active:scale-95">-</button>
-									<input type="number" id="maxItemsInput" min="1" max="20" value="3" oninput="updateItemCountLabel()"
+									<input type="number" id="maxItemsInput" min="1" max="20" value="6" oninput="updateItemCountLabel()"
 										class="w-12 bg-[#0c0e12] border border-brand-cardBorder rounded px-1 py-1 text-xs text-brand-neon text-center font-bold font-mono focus:outline-none focus:border-brand-neon">
 									<button type="button" onclick="adjustMaxItems(1)" class="w-7 h-7 rounded bg-[#0c0e12] border border-brand-cardBorder hover:border-brand-neon text-gray-300 hover:text-white flex items-center justify-center font-bold text-xs transition active:scale-95">+</button>
 								</div>
@@ -312,7 +312,8 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 								<button type="button" onclick="setMaxItemsVal(2)" class="px-2 py-0.5 rounded bg-[#14171f] hover:bg-brand-neon/20 hover:text-brand-neon text-[10px] text-gray-300 border border-brand-cardBorder transition">2 тов.</button>
 								<button type="button" onclick="setMaxItemsVal(3)" class="px-2 py-0.5 rounded bg-[#14171f] hover:bg-brand-neon/20 hover:text-brand-neon text-[10px] text-gray-300 border border-brand-cardBorder transition">3 тов.</button>
 								<button type="button" onclick="setMaxItemsVal(4)" class="px-2 py-0.5 rounded bg-[#14171f] hover:bg-brand-neon/20 hover:text-brand-neon text-[10px] text-gray-300 border border-brand-cardBorder transition">4 тов.</button>
-								<button type="button" onclick="setMaxItemsVal(5)" class="px-2 py-0.5 rounded bg-[#14171f] hover:bg-brand-neon/20 hover:text-brand-neon text-[10px] text-gray-300 border border-brand-cardBorder transition">5 тов.</button>
+								<button type="button" onclick="setMaxItemsVal(6)" class="px-2 py-0.5 rounded bg-[#14171f] hover:bg-brand-neon/20 hover:text-brand-neon text-[10px] text-gray-300 border border-brand-cardBorder transition">6 тов.</button>
+								<button type="button" onclick="setMaxItemsVal(8)" class="px-2 py-0.5 rounded bg-[#14171f] hover:bg-brand-neon/20 hover:text-brand-neon text-[10px] text-gray-300 border border-brand-cardBorder transition">8 тов.</button>
 							</div>
 						</div>
 					</div>

@@ -317,9 +317,17 @@ class Universal_Catalog_Matcher {
 		}
 
 		$expanded = array();
-		foreach ( $items_pool as $item ) {
-			for ( $k = 1; $k <= $max_copies; $k++ ) {
+		// Prefer distinct unique products so each picked item is a distinct position (row)
+		if ( count( $items_pool ) >= $max_items ) {
+			foreach ( $items_pool as $item ) {
 				$expanded[] = $item;
+			}
+		} else {
+			$copies_needed = (int) ceil( $max_items / max( 1, count( $items_pool ) ) );
+			foreach ( $items_pool as $item ) {
+				for ( $k = 1; $k <= $copies_needed; $k++ ) {
+					$expanded[] = $item;
+				}
 			}
 		}
 		shuffle( $expanded );
