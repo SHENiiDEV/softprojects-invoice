@@ -338,60 +338,79 @@ class Universal_Catalog_Matcher {
 		$best_matched_items = null;
 		$best_residual      = PHP_INT_MAX;
 
-		for ( $trial = 0; $trial < 25; $trial++ ) {
+		for ( $trial = 0; $trial < 30; $trial++ ) {
 			$pool_copy = $items_pool;
 			shuffle( $pool_copy );
 			$selected_products = array_slice( $pool_copy, 0, $target_count );
 
-			$base_cents = 0;
+			$base_sum_unit = 0;
 			foreach ( $selected_products as $p ) {
-				$base_cents += (int) $p['price_cents'];
+				$base_sum_unit += (int) $p['price_cents'];
 			}
 
-			if ( $base_cents <= $subtotal_target_cents ) {
-				// Allocate quantities using DP on remaining amount
-				$rem_cents = $subtotal_target_cents - $base_cents;
+			if ( $base_sum_unit <= $subtotal_target_cents ) {
+				// 1. Calculate balanced base quantity across all items
+				$base_qty = max( 1, (int) floor( $subtotal_target_cents / $base_sum_unit ) );
+				if ( $base_qty * $base_sum_unit > $subtotal_target_cents ) {
+					$base_qty = max( 1, $base_qty - 1 );
+				}
 
-				// DP for remaining amount using selected products' prices
-				$dp_rem = array( 0 => array( 'prev' => -1, 'prod_idx' => -1 ) );
-				foreach ( $selected_products as $p_idx => $p ) {
-					$cost = (int) $p['price_cents'];
-					if ( $cost <= 0 ) {
-						continue;
+				$cur_allocated_cents = 0;
+				$qty_array = array_fill( 0, $target_count, $base_qty );
+				foreach ( $selected_products as $p ) {
+					$cur_allocated_cents += $base_qty * (int) $p['price_cents'];
+				}
+
+				$rem_cents = $subtotal_target_cents - $cur_allocated_cents;
+
+				// 2. Distribute remaining cents using 0-1 Knapsack (max +1 piece per item)
+				if ( $rem_cents > 0 ) {
+					$slots = array();
+					foreach ( $selected_products as $p_idx => $p ) {
+						$slots[] = array( 'p_idx' => $p_idx, 'cost' => (int) $p['price_cents'] );
 					}
-					for ( $s = $cost; $s <= $rem_cents; $s++ ) {
-						$prev_s = $s - $cost;
-						if ( isset( $dp_rem[ $prev_s ] ) && ! isset( $dp_rem[ $s ] ) ) {
-							$dp_rem[ $s ] = array(
-								'prev'     => $prev_s,
-								'prod_idx' => $p_idx,
-							);
+
+					// 0-1 Knapsack DP (reverse loop prevents duplicate additions on same item)
+					$dp_rem = array( 0 => array( 'prev' => -1, 'slot_idx' => -1 ) );
+					foreach ( $slots as $s_idx => $slot ) {
+						$cost = $slot['cost'];
+						if ( $cost <= 0 ) {
+							continue;
+						}
+						for ( $s = $rem_cents; $s >= $cost; $s-- ) {
+							$prev_s = $s - $cost;
+							if ( isset( $dp_rem[ $prev_s ] ) && ! isset( $dp_rem[ $s ] ) ) {
+								$dp_rem[ $s ] = array(
+									'prev'     => $prev_s,
+									'slot_idx' => $s_idx,
+								);
+							}
 						}
 					}
-				}
 
-				// Find best reachable sum on remaining
-				$reached_rem = 0;
-				for ( $s = $rem_cents; $s >= 0; $s-- ) {
-					if ( isset( $dp_rem[ $s ] ) ) {
-						$reached_rem = $s;
-						break;
+					// Find best reachable sum
+					$reached_rem = 0;
+					for ( $s = $rem_cents; $s >= 0; $s-- ) {
+						if ( isset( $dp_rem[ $s ] ) ) {
+							$reached_rem = $s;
+							break;
+						}
 					}
-				}
 
-				// Trace quantities
-				$qty_addons = array_fill( 0, $target_count, 0 );
-				$curr_s     = $reached_rem;
-				while ( $curr_s > 0 && isset( $dp_rem[ $curr_s ] ) && $dp_rem[ $curr_s ]['prod_idx'] !== -1 ) {
-					$p_idx = $dp_rem[ $curr_s ]['prod_idx'];
-					$qty_addons[ $p_idx ]++;
-					$curr_s = $dp_rem[ $curr_s ]['prev'];
+					// Trace extra quantities (each item gets at most +1 piece)
+					$curr_s = $reached_rem;
+					while ( $curr_s > 0 && isset( $dp_rem[ $curr_s ] ) && $dp_rem[ $curr_s ]['slot_idx'] !== -1 ) {
+						$s_idx = $dp_rem[ $curr_s ]['slot_idx'];
+						$p_idx = $slots[ $s_idx ]['p_idx'];
+						$qty_array[ $p_idx ]++;
+						$curr_s = $dp_rem[ $curr_s ]['prev'];
+					}
 				}
 
 				$trial_items      = array();
 				$total_allocated  = 0;
 				foreach ( $selected_products as $p_idx => $p ) {
-					$q                = 1 + $qty_addons[ $p_idx ];
+					$q                = $qty_array[ $p_idx ];
 					$line_total_cents = $q * (int) $p['price_cents'];
 					$total_allocated += $line_total_cents;
 					$trial_items[]    = array(
@@ -414,11 +433,11 @@ class Universal_Catalog_Matcher {
 					}
 				}
 			} else {
-				// Base sum exceeds target: proportional uniform scaling
+				// Base sum exceeds target: proportional uniform scaling across all N items
 				$trial_items     = array();
 				$total_allocated = 0;
 				foreach ( $selected_products as $p ) {
-					$scaled_price    = round( ( (int) $p['price_cents'] / $base_cents ) * ( $subtotal_target_cents / 100 ), 2 );
+					$scaled_price    = round( ( (int) $p['price_cents'] / $base_sum_unit ) * ( $subtotal_target_cents / 100 ), 2 );
 					$scaled_cents    = (int) round( $scaled_price * 100 );
 					$total_allocated += $scaled_cents;
 					$trial_items[]   = array(

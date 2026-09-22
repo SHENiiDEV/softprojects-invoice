@@ -121,6 +121,27 @@ assert( count( $match_two['items'] ) <= 2, 'Must have at most 2 items' );
 assert( $match_two['total_cents'] === 18500, 'Total must match 185.00 EUR' );
 echo "✓ 2-items constraint verified!\n\n";
 
+// Test Balanced Quantities (e.g. 700.00 EUR with 7 items of ~15 EUR)
+$cheap_catalog = array(
+	array( 'name' => 'Youth t-shirt "Love inside"', 'price' => 9.95, 'price_cents' => 995, 'currency' => 'EUR' ),
+	array( 'name' => 'Infant bodysuit "LOVE INSIDE"', 'price' => 12.88, 'price_cents' => 1288, 'currency' => 'EUR' ),
+	array( 'name' => 'Youth baseball cap "Golden Glow"', 'price' => 18.15, 'price_cents' => 1815, 'currency' => 'EUR' ),
+	array( 'name' => 'Organic kids t-shirt "Lovely Charm"', 'price' => 18.15, 'price_cents' => 1815, 'currency' => 'EUR' ),
+	array( 'name' => 'Youth classic tee "Dream Sparkle"', 'price' => 11.71, 'price_cents' => 1171, 'currency' => 'EUR' ),
+	array( 'name' => 'Kids crew neck "Soft Doodles"', 'price' => 22.83, 'price_cents' => 2283, 'currency' => 'EUR' ),
+	array( 'name' => 'Organic baby bodysuit "Tiny Elegance"', 'price' => 18.73, 'price_cents' => 1873, 'currency' => 'EUR' ),
+);
+
+$match_balanced = Universal_Catalog_Matcher::match_amount( $cheap_catalog, 700.00, 'EUR', array( 'max_items' => 7 ) );
+echo "Test 700.00 EUR Balanced 7 items Match:\n";
+echo "  - Total: " . $match_balanced['total'] . " EUR\n";
+foreach ( $match_balanced['items'] as $item ) {
+	echo sprintf( "     * [%dx] %s @ %.2f EUR = %.2f EUR\n", $item['qty'], $item['name'], $item['unit_price'], $item['total'] );
+	assert( $item['qty'] >= 4 && $item['qty'] <= 9, 'Each item quantity must be balanced between 4 and 9 (no 63x spikes!)' );
+}
+assert( $match_balanced['total_cents'] === 70000, 'Total must match 700.00 EUR' );
+echo "✓ Balanced quantities verified!\n\n";
+
 echo "=== 3. Testing Text Receipt Formatter ===\n";
 $customer = array(
 	'order_id' => 'DRZ-37708',
