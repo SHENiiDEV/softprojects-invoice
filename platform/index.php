@@ -231,6 +231,10 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 								<option value="EUR" selected>EUR (€)</option>
 								<option value="GBP">GBP (£)</option>
 								<option value="USD">USD ($)</option>
+								<option value="AUD">AUD (A$)</option>
+								<option value="NZD">NZD (NZ$)</option>
+								<option value="CAD">CAD (C$)</option>
+								<option value="PLN">PLN (zł)</option>
 							</select>
 						</div>
 					</div>
@@ -742,15 +746,25 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 			storeUrlInput.addEventListener('input', updatePrefixFromUrl);
 			storeUrlInput.addEventListener('change', updatePrefixFromUrl);
 
+			function getDefaultShippingCost(curr) {
+				const map = {
+					'GBP': '9.99',
+					'USD': '12.80',
+					'EUR': '11.69',
+					'AUD': '19.50',
+					'NZD': '21.50',
+					'CAD': '17.50',
+					'PLN': '52.00'
+				};
+				return map[curr] || '11.69';
+			}
+
 			document.getElementById('targetCurrency').addEventListener('change', () => {
 				const curr = document.getElementById('targetCurrency').value;
 				document.getElementById('shippingCurrencyLabel').textContent = `в ${curr}`;
 				const mode = document.querySelector('input[name="shippingMode"]:checked').value;
 				if (mode === 'auto' || mode === 'manual') {
-					const curVal = document.getElementById('manualShippingCost').value;
-					if (curVal === '11.69' || curVal === '9.99' || curVal === '12.80') {
-						document.getElementById('manualShippingCost').value = (curr === 'GBP') ? '9.99' : ((curr === 'USD') ? '12.80' : '11.69');
-					}
+					document.getElementById('manualShippingCost').value = getDefaultShippingCost(curr);
 				}
 			});
 		});
@@ -797,7 +811,7 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 				costInput.value = '0.00';
 				titleInput.value = 'Free shipping';
 			} else if (mode === 'auto') {
-				const defaultCost = (curr === 'GBP') ? '9.99' : ((curr === 'USD') ? '12.80' : '11.69');
+				const defaultCost = (typeof getDefaultShippingCost === 'function') ? getDefaultShippingCost(curr) : ((curr === 'GBP') ? '9.99' : ((curr === 'USD') ? '12.80' : ((curr === 'AUD') ? '19.50' : ((curr === 'NZD') ? '21.50' : ((curr === 'CAD') ? '17.50' : ((curr === 'PLN') ? '52.00' : '11.69'))))));
 				costInput.value = defaultCost;
 				titleInput.value = 'Flat rate';
 			}

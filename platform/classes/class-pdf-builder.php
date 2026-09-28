@@ -62,7 +62,16 @@ class Universal_PDF_Builder {
 		$subtotal       = $match_result['subtotal'];
 		$invoice_number = ! empty( $customer_data['order_id'] ) ? $customer_data['order_id'] : 'DRZ-37708';
 		$invoice_date   = ! empty( $customer_data['date'] ) ? $customer_data['date'] : date( 'd.m.Y' );
-		$currency_symbol = ( $record['currency'] === 'GBP' ) ? '£' : ( ( $record['currency'] === 'USD' ) ? '$' : '€' );
+		$symbols = array(
+			'GBP' => '£',
+			'USD' => '$',
+			'EUR' => '€',
+			'AUD' => 'A$',
+			'NZD' => 'NZ$',
+			'CAD' => 'C$',
+			'PLN' => 'zł',
+		);
+		$currency_symbol = isset( $symbols[ $record['currency'] ] ) ? $symbols[ $record['currency'] ] : $record['currency'];
 
 		$template_file = __DIR__ . '/../templates/invoice-email-style.php';
 		ob_start();

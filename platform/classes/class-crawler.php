@@ -249,11 +249,9 @@ class Universal_Catalog_Crawler {
 						$price    = $raw_p / ( 10 ** $decimals );
 						$resp_cur = isset( $item['prices']['currency_code'] ) ? strtoupper( $item['prices']['currency_code'] ) : '';
 
-						// If API still returned GBP prices while target is EUR, convert using CURCY exchange rate
-						if ( $resp_cur === 'GBP' && $target_currency === 'EUR' ) {
-							$price = round( $price * 1.17017, 2 );
-						} elseif ( $resp_cur === 'EUR' && $target_currency === 'GBP' ) {
-							$price = round( $price / 1.17017, 2 );
+						// If API still returned prices in a different currency, convert to target currency
+						if ( $resp_cur && $resp_cur !== $target_currency ) {
+							$price = self::convert_currency( $price, $resp_cur, $target_currency );
 						}
 					} elseif ( isset( $item['price'] ) ) {
 						$price = (float) $item['price'];
@@ -490,14 +488,7 @@ class Universal_Catalog_Crawler {
 				// Currency conversion
 				$item_currency = ! empty( $item['currency'] ) ? strtoupper( trim( $item['currency'] ) ) : ( stripos( $origin, '.co.uk' ) !== false ? 'GBP' : 'EUR' );
 
-				$final_price = $raw_price;
-				if ( $item_currency === 'GBP' && $target_currency === 'EUR' ) {
-					$final_price = round( $raw_price * 1.17017, 2 );
-				} elseif ( $item_currency === 'EUR' && $target_currency === 'GBP' ) {
-					$final_price = round( $raw_price / 1.17017, 2 );
-				} elseif ( $item_currency === 'GBP' && $target_currency === 'USD' ) {
-					$final_price = round( $raw_price * 1.28028, 2 );
-				}
+				$final_price = self::convert_currency( $raw_price, $item_currency, $target_currency );
 
 				$slug = ! empty( $item['slug'] ) ? $item['slug'] : ( ! empty( $item['handle'] ) ? $item['handle'] : '' );
 				$link = '';
@@ -724,6 +715,42 @@ class Universal_Catalog_Crawler {
 	}
 
 	/**
+	 * Convert price amount between currencies using standard conversion rates.
+	 *
+	 * @param float  $amount
+	 * @param string $from_cur
+	 * @param string $to_cur
+	 * @return float
+	 */
+	public static function convert_currency( $amount, $from_cur, $to_cur ) {
+		$from_cur = strtoupper( trim( (string) $from_cur ?: 'EUR' ) );
+		$to_cur   = strtoupper( trim( (string) $to_cur ?: 'EUR' ) );
+
+		if ( $from_cur === $to_cur || $amount <= 0 ) {
+			return round( (float) $amount, 2 );
+		}
+
+		// Rates relative to EUR (1 EUR = X currency)
+		$rates_from_eur = array(
+			'EUR' => 1.0,
+			'GBP' => 0.8545,
+			'USD' => 1.0870,
+			'AUD' => 1.6600,
+			'NZD' => 1.8200,
+			'CAD' => 1.4900,
+			'PLN' => 4.2800,
+		);
+
+		$from_rate = isset( $rates_from_eur[ $from_cur ] ) ? $rates_from_eur[ $from_cur ] : 1.0;
+		$to_rate   = isset( $rates_from_eur[ $to_cur ] ) ? $rates_from_eur[ $to_cur ] : 1.0;
+
+		$amount_in_eur = (float) $amount / $from_rate;
+		$amount_in_dst = $amount_in_eur * $to_rate;
+
+		return round( $amount_in_dst, 2 );
+	}
+
+	/**
 	 * Extract numerical price and currency code from string.
 	 *
 	 * @param string $str
@@ -733,12 +760,20 @@ class Universal_Catalog_Crawler {
 		$currency = 'EUR';
 		if ( stripos( $str, '£' ) !== false || stripos( $str, 'GBP' ) !== false ) {
 			$currency = 'GBP';
+		} elseif ( stripos( $str, 'A$' ) !== false || stripos( $str, 'AU$' ) !== false || stripos( $str, 'AUD' ) !== false ) {
+			$currency = 'AUD';
+		} elseif ( stripos( $str, 'NZ$' ) !== false || stripos( $str, 'NZD' ) !== false ) {
+			$currency = 'NZD';
+		} elseif ( stripos( $str, 'C$' ) !== false || stripos( $str, 'CA$' ) !== false || stripos( $str, 'CAD' ) !== false ) {
+			$currency = 'CAD';
+		} elseif ( stripos( $str, 'zł' ) !== false || stripos( $str, 'PLN' ) !== false || stripos( $str, 'zl' ) !== false ) {
+			$currency = 'PLN';
 		} elseif ( stripos( $str, '$' ) !== false || stripos( $str, 'USD' ) !== false ) {
 			$currency = 'USD';
 		}
 
 		// Match price numbers: e.g. 19.99, 119,50, 1 250.00
-		if ( preg_match( '/(?:€|£|\$|EUR|GBP|USD)?\s*([0-9\s]+(?:[.,][0-9]{2})?)\s*(?:€|£|\$|EUR|GBP|USD)?/i', $str, $m ) ) {
+		if ( preg_match( '/(?:€|£|\$|A\$|NZ\$|C\$|zł|EUR|GBP|USD|AUD|NZD|CAD|PLN)?\s*([0-9\s]+(?:[.,][0-9]{2})?)\s*(?:€|£|\$|A\$|NZ\$|C\$|zł|EUR|GBP|USD|AUD|NZD|CAD|PLN)?/iu', $str, $m ) ) {
 			$num_str = trim( $m[1] );
 			$num_str = str_replace( array( ' ', "\xC2\xA0" ), '', $num_str );
 			$num_str = str_replace( ',', '.', $num_str );

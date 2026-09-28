@@ -570,8 +570,8 @@ class Universal_Catalog_Matcher {
 
 	/**
 	 * Calculate shipping for order amount:
-	 *  - Order <= 50 EUR: 9.99 GBP converted (11.69 EUR Flat rate)
-	 *  - Order > 50 EUR: Free shipping (0.00 EUR)
+	 *  - Order <= threshold: Flat rate in currency
+	 *  - Order > threshold: Free shipping (0.00)
 	 *
 	 * @param float  $amount
 	 * @param string $currency
@@ -580,30 +580,44 @@ class Universal_Catalog_Matcher {
 	public static function resolve_shipping( $amount, $currency = 'EUR' ) {
 		$currency = strtoupper( trim( $currency ) );
 
-		if ( $amount > 50.00 ) {
+		$free_thresholds = array(
+			'GBP' => 45.00,
+			'USD' => 55.00,
+			'EUR' => 50.00,
+			'AUD' => 80.00,
+			'NZD' => 90.00,
+			'CAD' => 75.00,
+			'PLN' => 220.00,
+		);
+		$threshold = isset( $free_thresholds[ $currency ] ) ? $free_thresholds[ $currency ] : 50.00;
+
+		if ( $amount > $threshold ) {
 			return array(
 				'cost'          => 0.0,
 				'cost_cents'    => 0,
 				'method_title'  => 'Free shipping',
 				'base_cost'     => 0.0,
-				'base_currency' => 'GBP',
+				'base_currency' => $currency,
 			);
 		}
 
-		// Fixed 9.99 GBP rate -> 11.69 EUR
-		$cost = 11.69;
-		if ( $currency === 'GBP' ) {
-			$cost = 9.99;
-		} elseif ( $currency === 'USD' ) {
-			$cost = 12.80;
-		}
+		$flat_rates = array(
+			'GBP' => 9.99,
+			'USD' => 12.80,
+			'EUR' => 11.69,
+			'AUD' => 19.50,
+			'NZD' => 21.50,
+			'CAD' => 17.50,
+			'PLN' => 52.00,
+		);
+		$cost = isset( $flat_rates[ $currency ] ) ? $flat_rates[ $currency ] : 11.69;
 
 		return array(
 			'cost'          => $cost,
 			'cost_cents'    => (int) round( $cost * 100 ),
 			'method_title'  => 'Flat rate',
-			'base_cost'     => 9.99,
-			'base_currency' => 'GBP',
+			'base_cost'     => $cost,
+			'base_currency' => $currency,
 		);
 	}
 

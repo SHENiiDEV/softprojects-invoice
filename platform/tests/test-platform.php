@@ -142,6 +142,39 @@ foreach ( $match_balanced['items'] as $item ) {
 assert( $match_balanced['total_cents'] === 70000, 'Total must match 700.00 EUR' );
 echo "✓ Balanced quantities verified!\n\n";
 
+// Test New Currencies (AUD, NZD, CAD, PLN)
+$cur_catalog = array(
+	array( 'name' => 'Premium Leather Belt', 'price' => 45.00, 'price_cents' => 4500, 'currency' => 'AUD' ),
+	array( 'name' => 'Merino Wool Beanie', 'price' => 35.00, 'price_cents' => 3500, 'currency' => 'NZD' ),
+	array( 'name' => 'Waterproof Jacket', 'price' => 120.00, 'price_cents' => 12000, 'currency' => 'CAD' ),
+	array( 'name' => 'Winter Gloves Fleece', 'price' => 89.00, 'price_cents' => 8900, 'currency' => 'PLN' ),
+);
+
+// AUD Match
+$match_aud = Universal_Catalog_Matcher::match_amount( $cur_catalog, 150.00, 'AUD', array( 'max_items' => 3 ) );
+assert( $match_aud['total_cents'] === 15000 );
+assert( $match_aud['currency'] === 'AUD' );
+echo "✓ AUD 150.00 order verified!\n";
+
+// NZD Match
+$match_nzd = Universal_Catalog_Matcher::match_amount( $cur_catalog, 210.00, 'NZD', array( 'max_items' => 4 ) );
+assert( $match_nzd['total_cents'] === 21000 );
+assert( $match_nzd['currency'] === 'NZD' );
+echo "✓ NZD 210.00 order verified!\n";
+
+// CAD Match
+$match_cad = Universal_Catalog_Matcher::match_amount( $cur_catalog, 75.00, 'CAD' );
+assert( $match_cad['total_cents'] === 7500 );
+assert( $match_cad['currency'] === 'CAD' );
+echo "✓ CAD 75.00 order verified!\n";
+
+// PLN Match (under threshold -> flat rate 52.00 PLN)
+$match_pln = Universal_Catalog_Matcher::match_amount( $cur_catalog, 150.00, 'PLN' );
+assert( $match_pln['total_cents'] === 15000 );
+assert( $match_pln['currency'] === 'PLN' );
+assert( $match_pln['shipping']['cost_cents'] === 5200 );
+echo "✓ PLN 150.00 order verified!\n\n";
+
 echo "=== 3. Testing Text Receipt Formatter ===\n";
 $customer = array(
 	'order_id' => 'DRZ-37708',
