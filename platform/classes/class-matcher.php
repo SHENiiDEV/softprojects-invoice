@@ -130,18 +130,24 @@ class Universal_Catalog_Matcher {
 			);
 		}
 
-		// 3. Solve Bounded Knapsack DP (max 2 duplicates per item, cap 3)
+		// 3. Solve matching
 		$max_copies      = isset( $custom_options['max_qty'] ) ? (int) $custom_options['max_qty'] : 2;
 		$max_items_limit = isset( $custom_options['max_items'] ) ? (int) $custom_options['max_items'] : 0;
 
-		// If user specified a manual maximum/exact items limit
-		if ( $max_items_limit > 0 ) {
-			$matched_items = self::solve_constrained_knapsack( $items_pool, $subtotal_target_cents, $max_items_limit, $max_copies );
+		// If user specified a manual item limit OR if amount is large (> 350.00 EUR), use scalable solver
+		if ( $max_items_limit > 0 || $subtotal_target_cents > 35000 ) {
+			$effective_limit = $max_items_limit > 0 ? $max_items_limit : min( 8, count( $items_pool ) );
+			$matched_items   = self::solve_constrained_knapsack( $items_pool, $subtotal_target_cents, $effective_limit, $max_copies );
 			return self::format_result( $matched_items, $subtotal_target_cents, $shipping_info, $target_amount, $target_currency );
 		}
 
-		$expanded = array();
-		foreach ( $items_pool as $item ) {
+		$expanded    = array();
+		$subset_pool = $items_pool;
+		if ( count( $subset_pool ) > 40 ) {
+			shuffle( $subset_pool );
+			$subset_pool = array_slice( $subset_pool, 0, 40 );
+		}
+		foreach ( $subset_pool as $item ) {
 			for ( $k = 1; $k <= $max_copies; $k++ ) {
 				$expanded[] = $item;
 			}
