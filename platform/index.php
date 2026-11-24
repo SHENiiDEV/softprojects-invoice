@@ -193,19 +193,48 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 
 				<form id="matchForm" onsubmit="handleMatchSubmit(event)" class="space-y-4">
 					
-					<!-- Store URL -->
+					<!-- Store URL or Custom JSON Source Mode -->
 					<div>
-						<label class="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-1.5">
-							Ссылка на каталог магазина <span class="text-brand-neon">*</span>
-						</label>
-						<div class="relative">
-							<input type="url" id="storeUrl" required placeholder="https://drezza.co.uk/shop или каталог любого сайта" 
+						<div class="flex items-center justify-between mb-1.5">
+							<label class="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+								Источник каталога товаров <span class="text-brand-neon">*</span>
+							</label>
+							<div class="flex items-center gap-1 bg-[#14171f] p-0.5 rounded-lg border border-brand-cardBorder text-[11px]">
+								<button type="button" id="sourceTabUrl" onclick="switchSourceMode('url')"
+									class="px-2 py-0.5 rounded font-medium bg-brand-neon text-black transition">
+									🔗 По ссылке
+								</button>
+								<button type="button" id="sourceTabJson" onclick="switchSourceMode('json')"
+									class="px-2 py-0.5 rounded font-medium text-gray-400 hover:text-white transition">
+									📋 Вставка JSON
+								</button>
+							</div>
+						</div>
+
+						<!-- Mode 1: URL input -->
+						<div id="sourceContainerUrl" class="relative">
+							<input type="url" id="storeUrl" placeholder="https://www.electreia.co.uk/en/catalog или любой сайт" 
 								class="w-full bg-[#0c0e12] border border-brand-cardBorder rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-neon focus:ring-1 focus:ring-brand-neon transition">
 							<button type="button" onclick="toggleSavedShopsDropdown()" title="Выбрать из сохраненных" 
 								class="absolute right-2 top-2 px-2 py-1 text-xs bg-brand-cardBorder text-gray-300 rounded-md hover:text-white hover:bg-gray-700">
 								▼
 							</button>
 						</div>
+
+						<!-- Mode 2: JSON input textarea -->
+						<div id="sourceContainerJson" class="hidden space-y-2">
+							<div class="relative">
+								<textarea id="rawJsonInput" rows="4" placeholder='Вставьте сюда JSON ответа из вкладки Network (например: {data: [...], total: 1877} или просто [...])'
+									class="w-full bg-[#0c0e12] border border-brand-cardBorder rounded-xl p-3 text-xs font-mono text-emerald-400 placeholder-gray-600 focus:outline-none focus:border-brand-neon custom-scroll"></textarea>
+							</div>
+							<div class="flex items-center justify-between text-[11px] text-gray-400">
+								<span>Поддерживает формат <code class="text-brand-neon">{data: [...]}</code>, <code class="text-brand-neon">{products: [...]}</code> или массив</span>
+								<button type="button" onclick="pasteJsonFromClipboard()" class="text-brand-neon hover:underline font-semibold">
+									📋 Вставить из буфера
+								</button>
+							</div>
+						</div>
+
 						<!-- Dropdown saved stores -->
 						<div id="savedShopsDropdown" class="hidden absolute z-30 mt-1 w-80 bg-brand-card border border-brand-cardBorder rounded-xl shadow-2xl overflow-hidden max-h-56 overflow-y-auto custom-scroll">
 							<div id="savedShopsList" class="divide-y divide-brand-cardBorder/50 text-xs"></div>
@@ -853,6 +882,43 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 			document.getElementById('targetAmount').value = val.toFixed(2);
 		}
 
+		let currentSourceMode = 'url';
+
+		function switchSourceMode(mode) {
+			currentSourceMode = mode;
+			const tabUrl = document.getElementById('sourceTabUrl');
+			const tabJson = document.getElementById('sourceTabJson');
+			const conUrl = document.getElementById('sourceContainerUrl');
+			const conJson = document.getElementById('sourceContainerJson');
+			const storeUrlInput = document.getElementById('storeUrl');
+
+			if (mode === 'url') {
+				tabUrl.className = 'px-2 py-0.5 rounded font-medium bg-brand-neon text-black transition';
+				tabJson.className = 'px-2 py-0.5 rounded font-medium text-gray-400 hover:text-white transition';
+				conUrl.classList.remove('hidden');
+				conJson.classList.add('hidden');
+				storeUrlInput.setAttribute('required', 'required');
+			} else {
+				tabJson.className = 'px-2 py-0.5 rounded font-medium bg-brand-neon text-black transition';
+				tabUrl.className = 'px-2 py-0.5 rounded font-medium text-gray-400 hover:text-white transition';
+				conJson.classList.remove('hidden');
+				conUrl.classList.add('hidden');
+				storeUrlInput.removeAttribute('required');
+			}
+		}
+
+		async function pasteJsonFromClipboard() {
+			try {
+				const text = await navigator.clipboard.readText();
+				if (text) {
+					document.getElementById('rawJsonInput').value = text;
+					showToast('JSON успешно вставлен из буфера обмена!');
+				}
+			} catch (e) {
+				showToast('Нажмите Ctrl+V для вставки текста в поле.', true);
+			}
+		}
+
 		function cleanUrl(str) {
 			if (!str) return '';
 			str = str.trim();
@@ -881,6 +947,17 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 			const amount = document.getElementById('targetAmount').value.trim();
 			const currency = document.getElementById('targetCurrency').value;
 			const forceRefresh = document.getElementById('forceRefresh').checked;
+			const rawJson = (currentSourceMode === 'json') ? document.getElementById('rawJsonInput').value.trim() : '';
+
+			if (currentSourceMode === 'json' && !rawJson) {
+				showToast('Пожалуйста, вставьте JSON товаров в поле ввода.', true);
+				return;
+			}
+
+			if (currentSourceMode === 'url' && !url) {
+				showToast('Пожалуйста, укажите ссылку на каталог магазина.', true);
+				return;
+			}
 
 			const shippingMode = document.querySelector('input[name="shippingMode"]:checked').value;
 			const manualShippingCost = document.getElementById('manualShippingCost').value.trim();
@@ -906,6 +983,7 @@ $is_logged_in = SoftProjects_Auth::is_authenticated();
 
 			const payload = {
 				url,
+				raw_json: rawJson,
 				amount,
 				currency,
 				force_refresh: forceRefresh,

@@ -93,32 +93,60 @@ if ( $action === 'match' ) {
 	}
 
 	$url           = ! empty( $input['url'] ) ? Universal_Catalog_Crawler::normalize_url( $input['url'] ) : '';
+	$raw_json      = ! empty( $input['raw_json'] ) ? trim( $input['raw_json'] ) : '';
 	$target_amount = ! empty( $input['amount'] ) ? (float) str_replace( array( ',', ' ' ), array( '.', '' ), $input['amount'] ) : 0.0;
 	$currency      = ! empty( $input['currency'] ) ? strtoupper( trim( $input['currency'] ) ) : 'EUR';
 	$force_refresh = ! empty( $input['force_refresh'] );
 	$customer_data = ! empty( $input['customer'] ) ? $input['customer'] : array();
 
-	if ( empty( $url ) || ! Universal_Catalog_Crawler::is_valid_url( $url ) ) {
-		send_json( array( 'success' => false, 'error' => 'Укажите корректный URL магазина.' ), 400 );
+	if ( empty( $raw_json ) && ( empty( $url ) || ! Universal_Catalog_Crawler::is_valid_url( $url ) ) ) {
+		send_json( array( 'success' => false, 'error' => 'Укажите корректный URL магазина или вставьте JSON товаров.' ), 400 );
 	}
 
 	if ( $target_amount <= 0 ) {
 		send_json( array( 'success' => false, 'error' => 'Укажите корректную сумму заказа больше 0.' ), 400 );
 	}
 
-	// 1. Get or scrape catalog in selected currency
-	$catalog_result = Universal_Catalog_Crawler::get_catalog( $url, $currency, $force_refresh );
-	if ( ! $catalog_result['success'] || empty( $catalog_result['products'] ) ) {
-		send_json( array(
-			'success' => false,
-			'error'   => ! empty( $catalog_result['error'] ) ? $catalog_result['error'] : 'Не удалось найти товары по указанному URL.',
-		), 400 );
+	// 1. Get products: either from raw JSON input or scrape by URL
+	if ( ! empty( $raw_json ) ) {
+		$parsed_host = ! empty( $url ) ? parse_url( $url, PHP_URL_HOST ) : '';
+		$origin      = ! empty( $parsed_host ) ? 'https://' . $parsed_host : '';
+		$raw_products = Universal_Catalog_Crawler::parse_raw_products_json( $raw_json, $currency, $origin );
+
+		if ( empty( $raw_products ) ) {
+			send_json( array(
+				'success' => false,
+				'error'   => 'Не удалось распарсить товары из переданного JSON. Убедитесь, что передана структура {data: [...]} или массив товаров.',
+			), 400 );
+		}
+
+		$catalog_result = array(
+			'success'  => true,
+			'source'   => 'Ручная вставка JSON (Network API)',
+			'url'      => $url ?: 'Custom JSON Import',
+			'currency' => $currency,
+			'products' => $raw_products,
+			'count'    => count( $raw_products ),
+			'cached'   => false,
+		);
+	} else {
+		$catalog_result = Universal_Catalog_Crawler::get_catalog( $url, $currency, $force_refresh );
+		if ( ! $catalog_result['success'] || empty( $catalog_result['products'] ) ) {
+			send_json( array(
+				'success' => false,
+				'error'   => ! empty( $catalog_result['error'] ) ? $catalog_result['error'] : 'Не удалось найти товары по указанному URL.',
+			), 400 );
+		}
 	}
 
-	// Extract store brand name from domain
-	$parsed_host = parse_url( $url, PHP_URL_HOST );
-	$store_brand = preg_replace( '/^www\./i', '', $parsed_host );
-	$store_name  = strtoupper( explode( '.', $store_brand )[0] );
+	// Extract store brand name from domain or default
+	if ( ! empty( $url ) ) {
+		$parsed_host = parse_url( $url, PHP_URL_HOST );
+		$store_brand = preg_replace( '/^www\./i', '', $parsed_host );
+		$store_name  = strtoupper( explode( '.', $store_brand )[0] );
+	} else {
+		$store_name = 'STORE';
+	}
 	if ( empty( $store_name ) ) {
 		$store_name = 'DREZZA';
 	}

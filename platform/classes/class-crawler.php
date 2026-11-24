@@ -134,6 +134,20 @@ class Universal_Catalog_Crawler {
 			);
 		}
 
+		// 1b. Proactively try common modern REST API patterns directly on origin
+		// (e.g. Next.js /api/products, Shopify /products.json, Nuxt, etc. even if HTML was challenged)
+		$common_api_products = self::try_common_rest_endpoints( $origin, $target_currency, $url );
+		if ( ! empty( $common_api_products ) ) {
+			return array(
+				'success'   => true,
+				'source'    => 'Headless REST API Endpoint',
+				'url'       => $url,
+				'currency'  => $target_currency,
+				'products'  => self::deduplicate_products( $common_api_products ),
+				'count'     => count( $common_api_products ),
+			);
+		}
+
 		// 2. Fetch HTML of the catalog page with currency switcher cookies and query param
 		$sep = ( strpos( $url, '?' ) !== false ) ? '&' : '?';
 		$url_with_curr = $url . $sep . 'wmc-currency=' . $target_currency . '&currency=' . $target_currency;
@@ -273,6 +287,44 @@ class Universal_Catalog_Crawler {
 				if ( ! empty( $products ) ) {
 					return $products;
 				}
+			}
+		}
+
+		return array();
+	}
+
+	/**
+	 * Probe common REST API endpoints directly without relying on HTML.
+	 *
+	 * @param string $origin
+	 * @param string $target_currency
+	 * @param string $page_url
+	 * @return array
+	 */
+	public static function try_common_rest_endpoints( $origin, $target_currency = 'EUR', $page_url = '' ) {
+		$lang_prefix = '';
+		if ( preg_match( '#^https?://[^/]+(/en|/de|/es|/fr|/lv|/lt|/pl|/it)#i', $page_url, $lm ) ) {
+			$lang_prefix = $lm[1];
+		}
+
+		$probes = array(
+			$origin . '/api/products?page=1&sort=newest',
+			$origin . '/api/products?page=1',
+			$origin . '/api/products',
+			$origin . '/products.json?limit=250',
+			$origin . '/api/catalog?page=1',
+			$origin . '/api/items',
+		);
+
+		if ( ! empty( $lang_prefix ) ) {
+			array_unshift( $probes, $origin . $lang_prefix . '/api/products?page=1&sort=newest' );
+			array_unshift( $probes, $origin . $lang_prefix . '/api/products' );
+		}
+
+		foreach ( $probes as $api_url ) {
+			$products = self::fetch_and_auto_paginate_api( $api_url, $origin, $target_currency, $lang_prefix );
+			if ( ! empty( $products ) && count( $products ) >= 2 ) {
+				return $products;
 			}
 		}
 
@@ -528,6 +580,111 @@ class Universal_Catalog_Crawler {
 		}
 
 		return $all_products;
+	}
+
+	/**
+	 * Parse raw JSON string or array directly into normalized products list.
+	 * Supports formats: {data: [...]}, {products: [...]}, {items: [...]}, or root array [...].
+	 *
+	 * @param string|array $raw_input
+	 * @param string       $target_currency
+	 * @param string       $origin
+	 * @return array
+	 */
+	public static function parse_raw_products_json( $raw_input, $target_currency = 'EUR', $origin = '' ) {
+		$target_currency = strtoupper( trim( $target_currency ?: 'EUR' ) );
+		if ( is_string( $raw_input ) ) {
+			$raw_input = trim( $raw_input );
+			$data = @json_decode( $raw_input, true );
+		} else {
+			$data = $raw_input;
+		}
+
+		if ( empty( $data ) || ! is_array( $data ) ) {
+			return array();
+		}
+
+		// Support nested {data: [...]}, {products: [...]}, {items: [...]}, etc.
+		$items_array = array();
+		if ( isset( $data[0] ) ) {
+			$items_array = $data;
+		} elseif ( isset( $data['data'] ) && is_array( $data['data'] ) ) {
+			$items_array = $data['data'];
+		} elseif ( isset( $data['items'] ) && is_array( $data['items'] ) ) {
+			$items_array = $data['items'];
+		} elseif ( isset( $data['products'] ) && is_array( $data['products'] ) ) {
+			$items_array = $data['products'];
+		} elseif ( isset( $data['results'] ) && is_array( $data['results'] ) ) {
+			$items_array = $data['results'];
+		}
+
+		$products = array();
+		$seen_ids = array();
+
+		foreach ( $items_array as $item ) {
+			if ( ! is_array( $item ) ) continue;
+
+			$name = '';
+			if ( ! empty( $item['name'] ) ) {
+				$name = html_entity_decode( trim( (string) $item['name'] ), ENT_QUOTES, 'UTF-8' );
+			} elseif ( ! empty( $item['title'] ) ) {
+				$name = html_entity_decode( trim( (string) $item['title'] ), ENT_QUOTES, 'UTF-8' );
+			} elseif ( ! empty( $item['productName'] ) ) {
+				$name = html_entity_decode( trim( (string) $item['productName'] ), ENT_QUOTES, 'UTF-8' );
+			}
+
+			if ( empty( $name ) ) continue;
+
+			$raw_price = 0.0;
+			if ( isset( $item['price'] ) && is_numeric( $item['price'] ) ) {
+				$raw_price = (float) $item['price'];
+			} elseif ( isset( $item['salePrice'] ) && is_numeric( $item['salePrice'] ) ) {
+				$raw_price = (float) $item['salePrice'];
+			} elseif ( isset( $item['sale_price'] ) && is_numeric( $item['sale_price'] ) ) {
+				$raw_price = (float) $item['sale_price'];
+			} elseif ( isset( $item['regularPrice'] ) && is_numeric( $item['regularPrice'] ) ) {
+				$raw_price = (float) $item['regularPrice'];
+			} elseif ( isset( $item['variants'][0]['price'] ) && is_numeric( $item['variants'][0]['price'] ) ) {
+				$raw_price = (float) $item['variants'][0]['price'];
+			} elseif ( isset( $item['min_price'] ) && is_numeric( $item['min_price'] ) ) {
+				$raw_price = (float) $item['min_price'];
+			} elseif ( isset( $item['minPrice'] ) && is_numeric( $item['minPrice'] ) ) {
+				$raw_price = (float) $item['minPrice'];
+			}
+
+			$item_currency = ! empty( $item['currency'] ) ? strtoupper( trim( $item['currency'] ) ) : ( stripos( $origin, '.co.uk' ) !== false ? 'GBP' : $target_currency );
+			$final_price   = self::convert_currency( $raw_price, $item_currency, $target_currency );
+
+			$slug = ! empty( $item['slug'] ) ? $item['slug'] : ( ! empty( $item['handle'] ) ? $item['handle'] : '' );
+			$link = '';
+			if ( ! empty( $item['source_url'] ) ) {
+				$link = $item['source_url'];
+			} elseif ( ! empty( $item['url'] ) ) {
+				$link = ( strpos( $item['url'], 'http' ) === 0 ) ? $item['url'] : rtrim( $origin, '/' ) . '/' . ltrim( $item['url'], '/' );
+			} elseif ( ! empty( $slug ) && ! empty( $origin ) ) {
+				$link = rtrim( $origin, '/' ) . '/product/' . $slug;
+			}
+
+			$item_id = isset( $item['id'] ) ? (string) $item['id'] : $name;
+			if ( isset( $seen_ids[ $item_id ] ) ) {
+				continue;
+			}
+			$seen_ids[ $item_id ] = true;
+
+			if ( $final_price > 0 ) {
+				$products[] = array(
+					'id'          => crc32( $item_id . '_' . $final_price ),
+					'name'        => $name,
+					'sku'         => ! empty( $item['sku'] ) ? (string) $item['sku'] : '',
+					'price'       => round( $final_price, 2 ),
+					'price_cents' => (int) round( $final_price * 100 ),
+					'currency'    => $target_currency,
+					'link'        => $link,
+				);
+			}
+		}
+
+		return $products;
 	}
 
 	/**
